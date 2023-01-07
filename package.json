@@ -1,0 +1,19 @@
+{
+  "name": "ludum-dare-52",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "aucguy-ludum-dare-base": "../Ludum-Dare-Base"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.12",
+    "@babel/preset-env": "^7.20.2",
+    "gulp": "^4.0.2"
+  }
+}

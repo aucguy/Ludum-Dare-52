@@ -1,0 +1,19 @@
+{
+    "items": [
+        {
+            "name": "hello",
+            "type": "image",
+            "url": "assets/hello.png"
+        },
+        {
+            "name": "tileset",
+            "type": "image",
+            "url": "assets/tileset.png"
+        },
+        {
+            "name": "map",
+            "type": "tilemap",
+            "url": "assets/map.json"
+        }
+    ]
+}

@@ -8,19 +8,22 @@
         "."
     ],
     "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
         "map.tmx": {
             "scale": 2,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 244,
-                "y": 3965.25
+                "x": 222.5,
+                "y": 181.75
             }
         },
         "map.tmx#tileset": {
             "scaleInDock": 1
         },
         "tileset.tsx": {
-            "scaleInDock": 1,
+            "scaleInDock": 2,
             "scaleInEditor": 8
         }
     },

@@ -105,31 +105,94 @@ const NumStat = util.extend(Object, 'NumStat', {
   }
 });
 
+const Direction = {
+  NONE: 0,
+  UP: 1,
+  LEFT: 2,
+  DOWN: 3,
+  RIGHT: 4
+};
+
 const Player = util.extend(Object, 'Player', {
   constructor: function(args) {
-    const { scene, camera, keyboard, x, y } = args;
-    this.sprite = scene.physics.add.image(0, 0, 'hello');
+    const { scene, camera, keyboard } = args;
+    this.sprite = scene.physics.add.image(0, 0, 'player');
     this.sprite.setCollideWorldBounds(true);
     setCamera(camera, this.sprite);
     camera.startFollow(this.sprite);
     this.keyboard = keyboard;
     this.oxygen = new NumStat(OXYGEN_MAX_LEVEL, OXYGEN_MAX_LEVEL);
     this.health = new NumStat(HEALTH_MAX_LEVEL, HEALTH_MAX_LEVEL);
+    this.horizontalDirection = Direction.NONE;
+    this.verticalDirection = Direction.NONE;
   },
   update(delta) {
     this.sprite.setVelocity(0);
     this.oxygen.increment(-delta / 1000 / 1000);
-    if(this.keyboard.isPressed(MOVE_UP)) {
-      this.sprite.setVelocityY(-PLAYER_VELOCITY);
+
+    let change = null;
+
+    if(this.horizontalDirection === Direction.LEFT) {
+      change = !this.keyboard.isPressed(MOVE_LEFT);
+    } else if(this.horizontalDirection === Direction.RIGHT) {
+      change = !this.keyboard.isPressed(MOVE_RIGHT);
+    } else {
+      change = true;
     }
-    if(this.keyboard.isPressed(MOVE_LEFT)) {
-      this.sprite.setVelocityX(-PLAYER_VELOCITY);
+
+    if(change) {
+      if(this.keyboard.isPressed(MOVE_LEFT)) {
+        this.horizontalDirection = Direction.LEFT;
+      } else if(this.keyboard.isPressed(MOVE_RIGHT)) {
+        this.horizontalDirection = Direction.RIGHT;
+      } else {
+        this.horizontalDirection = Direction.NONE;
+      }
     }
-    if(this.keyboard.isPressed(MOVE_DOWN)) {
-      this.sprite.setVelocityY(PLAYER_VELOCITY);
+
+    let velocityX = null;
+
+    if(this.horizontalDirection === Direction.LEFT) {
+      velocityX = -1;
+    } else if(this.horizontalDirection === Direction.RIGHT) {
+      velocityX = 1;
+    } else {
+      velocityX = 0;
     }
-    if(this.keyboard.isPressed(MOVE_RIGHT)) {
-      this.sprite.setVelocityX(PLAYER_VELOCITY);
+
+    change = null;
+
+    if(this.verticalDirection === Direction.UP) {
+      change = !this.keyboard.isPressed(MOVE_UP);
+    } else if(this.horizontalDirection === Direction.DOWN) {
+      change = !this.keyboard.isPressed(MOVE_DOWN);
+    } else {
+      change = true;
+    }
+
+    if(change) {
+      if(this.keyboard.isPressed(MOVE_UP)) {
+        this.verticalDirection = Direction.UP;
+      } else if(this.keyboard.isPressed(MOVE_DOWN)) {
+        this.verticalDirection = Direction.DOWN;
+      } else {
+        this.verticalDirection = Direction.NONE;
+      }
+    }
+
+    let velocityY = null;
+
+    if(this.verticalDirection === Direction.UP) {
+      velocityY = -1;
+    } else if(this.verticalDirection === Direction.DOWN) {
+      velocityY = 1;
+    } else {
+      velocityY = 0;
+    }
+
+    if(velocityX !== 0 || velocityY !== 0) {
+      const magnitude = PLAYER_VELOCITY / Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+      this.sprite.setVelocity(velocityX * magnitude, velocityY * magnitude);
     }
   }
 });

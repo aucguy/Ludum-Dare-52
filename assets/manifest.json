@@ -1,14 +1,14 @@
 {
     "items": [
         {
-            "name": "hello",
+            "name": "player",
             "type": "image",
-            "url": "assets/hello.png"
+            "url": "assets/image/player.png"
         },
         {
             "name": "tileset",
             "type": "image",
-            "url": "assets/tileset.png"
+            "url": "assets/image/tileset.png"
         },
         {
             "name": "map",

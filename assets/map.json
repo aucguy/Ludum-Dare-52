@@ -279,7 +279,7 @@
         {
          "columns":4,
          "firstgid":1,
-         "image":"tileset.png",
+         "image":"image\/tileset.png",
          "imageheight":64,
          "imagewidth":64,
          "margin":0,

@@ -56,6 +56,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       scene: this,
       camera: this.cameras.main,
       keyboard: this.keyboard,
+      map: this.map,
       x: 0,
       y: 0
     });
@@ -81,6 +82,11 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
 
 const TILE_FARM = 2;
 const TILE_CARROT = 3;
+const TILE_FLOOR = 4;
+
+function isInside(tile) {
+  return tile === TILE_FLOOR;
+}
 
 const GameMap = util.extend(Object, 'GameMap', {
   constructor: function(scene, camera) {
@@ -91,10 +97,15 @@ const GameMap = util.extend(Object, 'GameMap', {
     map.setCollision([TILE_FARM, TILE_CARROT], undefined, undefined, this.layer);
   },
   isTileActionable(x, y) {
-    return this.layer.getTileAt(x, y).index === TILE_FARM;
+    return this.getTileAt(x, y) === TILE_FARM;
   },
   getTileAt(x, y) {
-    return this.layer.getTileAt(x, y).index;
+    const tile = this.layer.getTileAt(x, y);
+    if(tile === null) {
+      return -1;
+    } else {
+      return tile.index;
+    }
   },
   putTileAt(index, x, y) {
     this.layer.putTileAt(index, x, y);
@@ -105,13 +116,6 @@ const Keyboard = util.extend(Object, 'Keyboard', {
   constructor: function(scene, keys) {
     this.keys = {};
     for(let key of keys) {
-      /*this.keyStates[key] = false;
-      scene.input.keyboard.on(`keydown-${key}`, () => {
-        this.keyStates[key] = true;
-      }, this);
-      scene.input.keyboard.on(`keyup-${key}`, () => {
-        this.keyStates[key] = false;
-      }, this);*/
       this.keys[key] = scene.input.keyboard.addKey(key);
     }
   },
@@ -148,8 +152,9 @@ const Direction = {
 
 const Player = util.extend(Object, 'Player', {
   constructor: function(args) {
-    const { scene, camera, keyboard } = args;
-    this.sprite = scene.physics.add.image(0, 0, 'player');
+    const { scene, camera, keyboard, map, x, y } = args;
+    this.map = map;
+    this.sprite = scene.physics.add.image(x, y, 'player');
     this.sprite.setCollideWorldBounds(true);
     setCamera(camera, this.sprite);
     camera.startFollow(this.sprite);
@@ -162,7 +167,22 @@ const Player = util.extend(Object, 'Player', {
   },
   update(delta) {
     this.sprite.setVelocity(0);
-    this.oxygen.increment(-delta / 1000);
+
+    const tileLeft = Math.floor(this.sprite.x / TILE_WIDTH - 1 / 2 * 0.95);
+    const tileRight = Math.floor(this.sprite.x / TILE_WIDTH + 1 / 2 * 0.95);
+    const tileUp = Math.floor(this.sprite.y / TILE_HEIGHT - 1 / 2 * 0.95);
+    const tileDown = Math.floor(this.sprite.y / TILE_HEIGHT + 1 / 2 * 0.95);
+
+    const inside = isInside(this.map.getTileAt(tileLeft, tileUp)) &&
+      isInside(this.map.getTileAt(tileLeft, tileDown)) &&
+      isInside(this.map.getTileAt(tileRight, tileUp)) &&
+      isInside(this.map.getTileAt(tileRight, tileDown));
+    
+    if(inside) {
+      this.oxygen.increment(delta / 1000 * 3);
+    } else {
+      this.oxygen.increment(-delta / 1000);
+    }
 
     let change = null;
 

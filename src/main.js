@@ -41,9 +41,35 @@ const PLANT_GROWTH_TIME_MAX = 20 * 1000;
 const MOLD_SPRAY_TIME = 0;
 const MOLD_GROW_TIME = 3000;
 const MOLD_START_CHANCE = 0.1;
+const ANGER_WARNING_DELAY = 5 * 1000;
+const ANGER_REAL_DELAY = 10 * 1000;
+const ANGER_PASS_DELAY = 5 * 1000;
+const ANGER_CHANCE = 0.1;
+const EXPLOSION_DAMAGE = 20;
 
 function setCamera(camera, sprite) {
   sprite.cameraFilter = 0xFFFFFFFF ^ camera.id;
+}
+
+function inCircle(centerX, centerY) {
+  const result = [];
+  const radius = HARVEST_RADIUS * TILE_WIDTH;
+    //let sprayed = 0;
+
+  for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
+    for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
+
+      const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+      if(distance < radius) {
+        const x = centerX - offsetX;
+        const y = centerY - offsetY;
+        const tileX = Math.floor(x / TILE_WIDTH);
+        const tileY = Math.floor(y / TILE_HEIGHT);
+        result.push([tileX, tileY]);
+      }
+    }
+  }
+  return result;
 }
 
 const StartScene = util.extend(Phaser.Scene, 'StartScene', {
@@ -90,16 +116,38 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     //this.tileSelection.update(time);
 
     for(let event of this.scheduler.update(time)) {
+      const tileX = event.data.tileX;
+      const tileY = event.data.tileY;
       if(event.type === 'grow') {
-        const tileX = event.data.tileX;
-        const tileY = event.data.tileY;
         if(MOLD_START_CHANCE > Math.random()) {
           this.map.putTileAt(TILE_MOLD, tileX, tileY)
           this.moldGrowth.addFutureGrowth(tileX, tileY);
         } else if(this.map.getTileAt(tileX, tileY) === TILE_PLANT) {
           this.map.putTileAt(TILE_CARROT, tileX, tileY);
+          if(ANGER_CHANCE > Math.random()) {
+            this.scheduler.addEvent(ANGER_WARNING_DELAY, 'anger-warning', {
+              tileX,
+              tileY
+            })
+          }
         }
-      } /*else if(event.type === 'spray') {
+      } else if(event.type === 'anger-warning') {
+        this.map.putTileAt(TILE_ANGER_WARNING, tileX, tileY);
+        this.scheduler.addEvent(ANGER_REAL_DELAY, 'anger-real', {
+          tileX,
+          tileY
+        });
+      } else if(event.type === 'anger-real') {
+        this.map.putTileAt(TILE_ANGER_REAL, tileX, tileY);
+        this.scheduler.addEvent(ANGER_PASS_DELAY, 'anger-pass', {
+          tileX,
+          tileY
+        });
+      } else if(event.type === 'anger-pass') {
+        this.map.putTileAt(TILE_CARROT, tileX, tileY);
+      }
+      
+      /*else if(event.type === 'spray') {
         this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
 
         for(let offset of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
@@ -117,13 +165,14 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
 
     //let moldSprayed = 0;
 
-    if(this.keyboard.isPressed(ACTION_KEY)) {
-      this.harvest();
+    //if(this.keyboard.isPressed(ACTION_KEY)) {
+    this.harvest();
+    this.checkExplosions();
       /*if(moldSprayed !== 0) {
         this.player.oxygen.increment(-moldSprayed / 60 * delta / 1000);
         this.tileSelection.hide();
       }*/
-    }
+    //}
 
     /*if(moldSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
       const tileX = this.tileSelection.selectedX;
@@ -154,7 +203,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     const radius = HARVEST_RADIUS * TILE_WIDTH;
     //let sprayed = 0;
 
-    for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
+    /*for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
       for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
 
         const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
@@ -162,32 +211,48 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
           const x = this.player.sprite.x - offsetX;
           const y = this.player.sprite.y - offsetY;
           const tileX = Math.floor(x / TILE_WIDTH);
-          const tileY = Math.floor(y / TILE_HEIGHT);
-          const tile = this.map.getTileAt(tileX, tileY);
-          if(tile === TILE_CARROT || tile === TILE_FARM || tile === TILE_MOLD) {
-            this.map.putTileAt(TILE_PLANT, tileX, tileY);
-            const delay = PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN);
-            this.scheduler.addEvent(delay, 'grow', {
-              tileX,
-              tileY
-            });
-            //sprayed += 1;
+          const tileY = Math.floor(y / TILE_HEIGHT);*/
+    for(let [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
+      const tile = this.map.getTileAt(tileX, tileY);
+      if(tile === TILE_CARROT || tile === TILE_FARM || tile === TILE_MOLD) {
+        this.map.putTileAt(TILE_PLANT, tileX, tileY);
+        const delay = PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN);
+        this.scheduler.addEvent(delay, 'grow', {
+          tileX,
+          tileY
+        });
+        //sprayed += 1;
 
-            /*this.removeFutureGrowth(tileX, tileY);
-            for(let neighbor of NEIGHBORS) {
-              if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_) {
-                this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
-              }
-            }*/
+        /*this.removeFutureGrowth(tileX, tileY);
+        for(let neighbor of NEIGHBORS) {
+          if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_) {
+            this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
           }
-          if(tile === TILE_CARROT) {
-            this.player.food.increment(1);
-          }
-        }
+        }*/
+      }
+      if(tile === TILE_CARROT) {
+        this.player.food.increment(1);
       }
     }
     //return sprayed;
   },
+  checkExplosions() {
+    let destroy = [];
+    for(let [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
+      const tile = this.map.getTileAt(tileX, tileY);
+      if(tile === TILE_ANGER_REAL) {
+        destroy = destroy.concat(inCircle((tileX + 1/2) * TILE_WIDTH, (tileY + 1/2) * TILE_WIDTH));
+        this.player.health.increment(-EXPLOSION_DAMAGE);
+      }
+    }
+
+    for(let [tileX, tileY] of destroy) {
+      const tile = this.map.getTileAt(tileX, tileY);
+      if(tile !== TILE_ROCK) {
+        this.map.putTileAt(TILE_FARM, tileX, tileY);
+      }
+    }
+  }
 });
 
 const NEIGHBORS = [
@@ -245,8 +310,8 @@ const TILE_PLANT = 3;
 const TILE_FLOOR = 4;
 const TILE_CARROT = 5;
 const TILE_ROCK = 6;
-const TILE_VERTICAL_WALL = 7;
-const TILE_TOPLEFT_WALL = 8;
+const TILE_ANGER_REAL = 7;
+const TILE_ANGER_WARNING = 8;
 const TILE_TOPRIGHT_WALL = 9;
 const TILE_BOTTOMLEFT_WALL = 10;
 const TILE_BOTTOMRIGHT_WALL = 11;
@@ -255,7 +320,7 @@ const TILE_BROKEN_VENT = 13;
 const TILE_MOLD = 14;
 
 const SOLID_TILES = [
-  TILE_ROCK, TILE_VERTICAL_WALL, TILE_TOPLEFT_WALL,
+  TILE_ROCK,
   TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL,
   TILE_WORKING_VENT, TILE_BROKEN_VENT
 ];
@@ -687,3 +752,17 @@ const Scheduler = util.extend(Object, 'Scheduler', {
     return this.events.splice(0, index);
   }
 });
+
+const MainMenu = util.extend(Phaser.Scene, 'MainMenu', {
+  constructor: function() {
+    this.constructor$Scene();
+    this.playButton = null;
+  },
+  create() {
+    this.playButton = new Button('Play');
+  }
+});
+
+const Button = util.extend(Object, 'Button', {
+  
+})

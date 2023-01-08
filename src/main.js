@@ -101,6 +101,13 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       } else if(tile === TILE_CARROT) {
         this.map.putTileAt(TILE_FARM, tileX, tileY);
         this.player.food.increment(1);
+      } else if(tile === TILE_BROKEN_VENT) {
+        for(let room of this.map.rooms) {
+          if(room.containsPoint(tileX * TILE_WIDTH, tileY * TILE_HEIGHT)) {
+            room.workingVents++;
+          }
+        }
+        this.map.putTileAt(TILE_WORKING_VENT, tileX, tileY);
       }
     }
 
@@ -121,15 +128,52 @@ const TILE_TOPLEFT_WALL = 8;
 const TILE_TOPRIGHT_WALL = 9;
 const TILE_BOTTOMLEFT_WALL = 10;
 const TILE_BOTTOMRIGHT_WALL = 11;
+const TILE_WORKING_VENT = 12;
+const TILE_BROKEN_VENT = 13;
 
-const SOLID_TILES = [TILE_FARM, TILE_PLANT, TILE_CARROT,
+const SOLID_TILES = [
+  TILE_FARM, TILE_PLANT, TILE_CARROT,
   TILE_HORIZONTAL_WALL, TILE_VERTICAL_WALL, TILE_TOPLEFT_WALL,
-  TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL
+  TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL,
+  TILE_WORKING_VENT, TILE_BROKEN_VENT
 ];
 
 function isInside(tile) {
   return tile === TILE_FLOOR;
 }
+
+/*const Rectangle = util.extend(Object, 'Rectangle', {
+  constructor: function(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
+});*/
+
+const Room = util.extend(Object, 'Room', {
+  constructor: function() {
+    this.workingVents = 0;
+    this.totalVents = 0;
+    this.rectangles = [];
+  },
+  contains(rect) {
+    for(let rectangle of this.rectangles) {
+      if(Phaser.Geom.Rectangle.ContainsRect(rectangle, rect)) {
+        return true;
+      }
+    }
+    return false;
+  },
+  containsPoint(x, y) {
+    for(let rectangle of this.rectangles) {
+      if(rectangle.contains(x, y)) {
+        return true;
+      }
+    }
+    return false;
+  }
+});
 
 const GameMap = util.extend(Object, 'GameMap', {
   constructor: function(scene, camera) {
@@ -138,9 +182,38 @@ const GameMap = util.extend(Object, 'GameMap', {
     this.layer = map.createLayer('ground', tileset, 0, 0);
     setCamera(camera, this.layer);
     map.setCollision(SOLID_TILES, undefined, undefined, this.layer);
+    const roomLayer = map.getObjectLayer('rooms');
+    const rooms = new Map();
+    for(const roomObj of roomLayer.objects) {
+      if(!roomObj.rectangle) {
+        continue;
+      }
+      const id = roomObj.properties.find(prop => prop.name === 'id').value + '';
+      if(!rooms.has(id)) {
+        rooms.set(id, new Room());
+      }
+      const rectangle = new Phaser.Geom.Rectangle(roomObj.x, roomObj.y, roomObj.width, roomObj.height);
+      rooms.get(id).rectangles.push(rectangle);
+
+      const minX = Math.floor(rectangle.x / TILE_WIDTH);
+      const minY = Math.floor(rectangle.y / TILE_HEIGHT);
+      const maxX = minX + Math.ceil(rectangle.width / TILE_WIDTH);
+      const maxY = minY + Math.ceil(rectangle.height / TILE_HEIGHT);
+      for(let x = minX; x <= maxX; x++) {
+        for(let y = minY; y <= maxY; y++) {
+          if(this.getTileAt(x, y) == TILE_WORKING_VENT) {
+            rooms.get(id).workingVents++;
+            rooms.get(id).totalVents++;
+          } else if(this.getTileAt(x, y) == TILE_BROKEN_VENT) {
+            rooms.get(id).totalVents++;
+          }
+        }
+      }
+    }
+    this.rooms = Array.from(rooms.values());
   },
   isTileActionable(x, y) {
-    return [TILE_FARM, TILE_CARROT].includes(this.getTileAt(x, y));
+    return [TILE_FARM, TILE_CARROT, TILE_BROKEN_VENT].includes(this.getTileAt(x, y));
   },
   getTileAt(x, y) {
     const tile = this.layer.getTileAt(x, y);
@@ -222,7 +295,7 @@ const Player = util.extend(Object, 'Player', {
   update(delta) {
     this.sprite.setVelocity(0);
 
-    const tileLeft = Math.floor(this.sprite.x / TILE_WIDTH - 1 / 2 * 0.95);
+    /*const tileLeft = Math.floor(this.sprite.x / TILE_WIDTH - 1 / 2 * 0.95);
     const tileRight = Math.floor(this.sprite.x / TILE_WIDTH + 1 / 2 * 0.95);
     const tileUp = Math.floor(this.sprite.y / TILE_HEIGHT - 1 / 2 * 0.95);
     const tileDown = Math.floor(this.sprite.y / TILE_HEIGHT + 1 / 2 * 0.95);
@@ -230,13 +303,28 @@ const Player = util.extend(Object, 'Player', {
     const inside = isInside(this.map.getTileAt(tileLeft, tileUp)) &&
       isInside(this.map.getTileAt(tileLeft, tileDown)) &&
       isInside(this.map.getTileAt(tileRight, tileUp)) &&
-      isInside(this.map.getTileAt(tileRight, tileDown));
+      isInside(this.map.getTileAt(tileRight, tileDown));*/
 
-    if(inside) {
-      this.oxygen.increment(delta / 1000 * 3);
-    } else {
-      this.oxygen.increment(-delta / 1000);
+    let room = null;
+
+    for(let i of this.map.rooms) {
+      if(i.contains(this.sprite.getBounds())) {
+        room = i;
+        break;
+      }
     }
+
+    let factor = null;
+
+    if(room === null) {
+      factor = -1;
+    } else if(room.workingVents === room.totalVents) {
+      factor = 3;
+    } else {
+      factor = room.workingVents / room.totalVents - 1;
+    }
+
+    this.oxygen.increment(delta / 1000 * factor);
 
     let change = null;
 

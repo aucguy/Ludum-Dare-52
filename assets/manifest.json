@@ -14,6 +14,22 @@
             "name": "map",
             "type": "tilemap",
             "url": "assets/map.json"
+        },
+        {
+            "name": "carrot",
+            "type": "image",
+            "url": "assets/image/carrot.png"
+        },
+        {
+            "name": "digit",
+            "type": "image",
+            "url": "assets/image/digit.png"
+        },
+        {
+            "name": "font",
+            "type": "bitmapFont",
+            "url": "assets/font.xml",
+            "image": "assets/image/digit.png"
         }
     ]
 }

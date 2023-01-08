@@ -5,7 +5,7 @@ export function init() {
     width: 640,
     height: 480,
     parent: 'gameContainer',
-    scene: new util.BootScene('start'),
+    scene: new CustomBootScene('start'),
     physics: {
       default: 'arcade',
       arcade: {
@@ -20,6 +20,15 @@ export function init() {
   return game;
 }
 
+const CustomBootScene = util.extend(util.BootScene, 'CustomBootScene', {
+  constructor: function(nextScene) {
+    this.constructor$BootScene(nextScene);
+  },
+  create() {
+    this.create$BootScene();
+  }
+});
+
 const MOVE_UP = Phaser.Input.Keyboard.KeyCodes.W;
 const MOVE_LEFT = Phaser.Input.Keyboard.KeyCodes.A;
 const MOVE_DOWN = Phaser.Input.Keyboard.KeyCodes.S;
@@ -27,6 +36,7 @@ const MOVE_RIGHT = Phaser.Input.Keyboard.KeyCodes.D;
 const ACTION_KEY = Phaser.Input.Keyboard.KeyCodes.SPACE;
 
 const PLAYER_VELOCITY = 100;
+const PLANT_GROWTH_TIME = 3000;
 
 function setCamera(camera, sprite) {
   sprite.cameraFilter = 0xFFFFFFFF ^ camera.id;
@@ -40,6 +50,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     this.hud = null;
   },
   create() {
+    this.scheduler = new Scheduler();
     this.cameras.main.setBounds(0, 0, 256 * 16 * 2, 256 * 16 * 2);
     this.physics.world.setBounds(0, 0, 256 * 16 * 2, 256 * 16 * 2);
 
@@ -71,18 +82,29 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     this.player.update(delta);
     this.tileSelection.update(time);
 
+    for(let event of this.scheduler.update(time)) {
+      if(event.type === 'grow') {
+        this.map.putTileAt(TILE_CARROT, event.data.tileX, event.data.tileY);
+      }
+    }
+
     if(this.keyboard.isPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
       const tile = this.map.getTileAt(this.tileSelection.selectedX, this.tileSelection.selectedY);
       if(tile === TILE_FARM) {
-        this.map.putTileAt(TILE_CARROT, this.tileSelection.selectedX, this.tileSelection.selectedY);
+        this.map.putTileAt(TILE_PLANT, this.tileSelection.selectedX, this.tileSelection.selectedY);
+        this.scheduler.addEvent(PLANT_GROWTH_TIME, 'grow', {
+          tileX: this.tileSelection.selectedX,
+          tileY: this.tileSelection.selectedY
+        });
       }
     }
   }
 });
 
 const TILE_FARM = 2;
-const TILE_CARROT = 3;
+const TILE_PLANT = 3;
 const TILE_FLOOR = 4;
+const TILE_CARROT = 5;
 
 function isInside(tile) {
   return tile === TILE_FLOOR;
@@ -94,7 +116,7 @@ const GameMap = util.extend(Object, 'GameMap', {
     const tileset = map.addTilesetImage('tileset');
     this.layer = map.createLayer('ground', tileset, 0, 0);
     setCamera(camera, this.layer);
-    map.setCollision([TILE_FARM, TILE_CARROT], undefined, undefined, this.layer);
+    map.setCollision([TILE_FARM, TILE_PLANT, TILE_CARROT], undefined, undefined, this.layer);
   },
   isTileActionable(x, y) {
     return this.getTileAt(x, y) === TILE_FARM;
@@ -161,6 +183,7 @@ const Player = util.extend(Object, 'Player', {
     this.keyboard = keyboard;
     this.oxygen = new NumStat(OXYGEN_MAX_LEVEL, OXYGEN_MAX_LEVEL);
     this.health = new NumStat(HEALTH_MAX_LEVEL, HEALTH_MAX_LEVEL);
+    this.food = new NumStat(0, 1000);
     this.horizontalDirection = Direction.NONE;
     this.verticalDirection = Direction.NONE;
     this.lastDirection = Direction.NONE;
@@ -177,7 +200,7 @@ const Player = util.extend(Object, 'Player', {
       isInside(this.map.getTileAt(tileLeft, tileDown)) &&
       isInside(this.map.getTileAt(tileRight, tileUp)) &&
       isInside(this.map.getTileAt(tileRight, tileDown));
-    
+
     if(inside) {
       this.oxygen.increment(delta / 1000 * 3);
     } else {
@@ -260,7 +283,7 @@ const BAR_BACKGROUND_COLOR = 0xFFFFFF;
 const BAR_OUTLINE_WIDTH = 3;
 const BAR_OUTLINE_COLOR = 0x000000;
 
-const NumStatDisplay = util.extend(Object, 'NumStatDisplay', {
+const BarDisplay = util.extend(Object, 'BarDisplay', {
   constructor: function(args) {
     const { scene, camera, x, y, color, stat } = args;
     this.stat = stat;
@@ -279,6 +302,29 @@ const NumStatDisplay = util.extend(Object, 'NumStatDisplay', {
   }
 });
 
+const ItemDisplay = util.extend(Object, 'ItemDisplay', {
+  constructor: function(args) {
+    const { scene, camera, x, y, stat, icon } = args;
+    this.stat = stat;
+
+    const outline = scene.add.rectangle(x, y, 64, 40, 0x808080);
+    setCamera(camera, outline);
+    outline.setOrigin(0);
+
+    const iconSprite = scene.add.image(x + 32, y + 4, icon);
+    iconSprite.scale = 2;
+    setCamera(camera, iconSprite);
+    iconSprite.setOrigin(0);
+
+    this.digit = scene.add.bitmapText(x, y + 4, 'font', this.stat.level + '', 32);
+    setCamera(camera, this.digit);
+    this.digit.setOrigin(0);
+  },
+  update() {
+    this.digit.text = this.stat.level + '';
+  }
+});
+
 const OXYGEN_MAX_LEVEL = 100;
 const HEALTH_MAX_LEVEL = 100;
 
@@ -286,7 +332,7 @@ const Hud = util.extend(Object, 'Hud', {
   constructor: function(scene, player) {
     this.camera = scene.cameras.add(0, 0, scene.cameras.main.width, scene.cameras.main.height);
 
-    this.oxygenBar = new NumStatDisplay({
+    this.oxygenBar = new BarDisplay({
       scene,
       camera: this.camera,
       x: 10,
@@ -295,7 +341,7 @@ const Hud = util.extend(Object, 'Hud', {
       stat: player.oxygen
     });
 
-    this.healthBar = new NumStatDisplay({
+    this.healthBar = new BarDisplay({
       scene,
       camera: this.camera,
       x: 10,
@@ -303,9 +349,20 @@ const Hud = util.extend(Object, 'Hud', {
       color: 0xFF0000,
       stat: player.health
     });
+
+    this.foodDisplay = new ItemDisplay({
+      scene,
+      camera: this.camera,
+      x: 560,
+      y: 20,
+      icon: 'carrot',
+      stat: player.food
+    });
   },
   update() {
     this.oxygenBar.update();
+    this.healthBar.update();
+    this.foodDisplay.update();
   }
 });
 
@@ -370,5 +427,28 @@ const TileSelection = util.extend(Object, 'TileSelection', {
   },
   isSelected() {
     return this.selectedX !== null && this.selectedY !== null;
+  }
+});
+
+const Scheduler = util.extend(Object, 'Scheduler', {
+  constructor: function() {
+    this.events = [];
+    this.time = null;
+  },
+  addEvent(delay, type, data) {
+    this.events.push({
+      time: this.time + delay,
+      type,
+      data
+    });
+    this.events.sort((a, b) => b.time - a.time);
+  },
+  update(time) {
+    this.time = time;
+    let index = 0;
+    while(index < this.events.length && this.events[index].time <= time) {
+      index++;
+    }
+    return this.events.splice(0, index);
   }
 });

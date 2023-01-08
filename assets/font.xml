@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<font>
+  <info face="LD52" size="16" bold="0" italic="0" charset="" unicode="1" stretchH="100" smooth="0" aa="1" padding="0,0,0,0" spacing="1,1" outline="0"/>
+  <common lineHeight="16" base="13" scaleW="256" scaleH="256" pages="1" packed="0" alphaChnl="0" redChnl="3" greenChnl="3" blueChnl="3"/>
+  <pages>
+    <page id="0" file="image/digit.png" />
+  </pages>
+  <chars count="176">
+    <char id="48" x="0" y="0" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="49" x="16" y="0" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="50" x="32" y="0" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="51" x="48" y="0" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="52" x="64" y="0" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="53" x="0" y="16" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="54" x="16" y="16" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="55" x="32" y="16" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="56" x="48" y="16" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+    <char id="57" x="64" y="16" width="16" height="16" xoffset="0" yoffset="0" xadvance="16" page="0" chnl="15" />
+  </chars>
+</font>

@@ -40,6 +40,7 @@ const PLANT_GROWTH_TIME_MIN = 10 * 1000;
 const PLANT_GROWTH_TIME_MAX = 20 * 1000;
 const MOLD_SPRAY_TIME = 0;
 const MOLD_GROW_TIME = 3000;
+const MOLD_START_CHANCE = 0.1;
 
 function setCamera(camera, sprite) {
   sprite.cameraFilter = 0xFFFFFFFF ^ camera.id;
@@ -90,7 +91,14 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
 
     for(let event of this.scheduler.update(time)) {
       if(event.type === 'grow') {
-        this.map.putTileAt(TILE_CARROT, event.data.tileX, event.data.tileY);
+        const tileX = event.data.tileX;
+        const tileY = event.data.tileY;
+        if(MOLD_START_CHANCE > Math.random()) {
+          this.map.putTileAt(TILE_MOLD, tileX, tileY)
+          this.moldGrowth.addFutureGrowth(tileX, tileY);
+        } else if(this.map.getTileAt(tileX, tileY) === TILE_PLANT) {
+          this.map.putTileAt(TILE_CARROT, tileX, tileY);
+        }
       } /*else if(event.type === 'spray') {
         this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
 
@@ -156,7 +164,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
           const tileX = Math.floor(x / TILE_WIDTH);
           const tileY = Math.floor(y / TILE_HEIGHT);
           const tile = this.map.getTileAt(tileX, tileY);
-          if(tile === TILE_CARROT || tile === TILE_FARM) {
+          if(tile === TILE_CARROT || tile === TILE_FARM || tile === TILE_MOLD) {
             this.map.putTileAt(TILE_PLANT, tileX, tileY);
             const delay = PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN);
             this.scheduler.addEvent(delay, 'grow', {
@@ -171,6 +179,9 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
                 this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
               }
             }*/
+          }
+          if(tile === TILE_CARROT) {
+            this.player.food.increment(1);
           }
         }
       }

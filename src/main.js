@@ -36,7 +36,8 @@ const MOVE_RIGHT = Phaser.Input.Keyboard.KeyCodes.D;
 const ACTION_KEY = Phaser.Input.Keyboard.KeyCodes.SPACE;
 
 const PLAYER_VELOCITY = 100;
-const PLANT_GROWTH_TIME = 3000;
+const PLANT_GROWTH_TIME_MIN = 10 * 1000;
+const PLANT_GROWTH_TIME_MAX = 20 * 1000;
 const MOLD_SPRAY_TIME = 0;
 const MOLD_GROW_TIME = 3000;
 
@@ -157,7 +158,8 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
           const tile = this.map.getTileAt(tileX, tileY);
           if(tile === TILE_CARROT || tile === TILE_FARM) {
             this.map.putTileAt(TILE_PLANT, tileX, tileY);
-            this.scheduler.addEvent(PLANT_GROWTH_TIME, 'grow', {
+            const delay = PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN);
+            this.scheduler.addEvent(delay, 'grow', {
               tileX,
               tileY
             });
@@ -551,20 +553,20 @@ const Hud = util.extend(Object, 'Hud', {
   constructor: function(scene, player) {
     this.camera = scene.cameras.add(0, 0, scene.cameras.main.width, scene.cameras.main.height);
 
-    this.oxygenBar = new BarDisplay({
+    /*this.oxygenBar = new BarDisplay({
       scene,
       camera: this.camera,
       x: 10,
       y: 10,
       color: 0x0000FF,
       stat: player.oxygen
-    });
+    });*/
 
     this.healthBar = new BarDisplay({
       scene,
       camera: this.camera,
       x: 10,
-      y: 40,
+      y: 10,
       color: 0xFF0000,
       stat: player.health
     });
@@ -579,7 +581,7 @@ const Hud = util.extend(Object, 'Hud', {
     });
   },
   update() {
-    this.oxygenBar.update();
+    //this.oxygenBar.update();
     this.healthBar.update();
     this.foodDisplay.update();
   }

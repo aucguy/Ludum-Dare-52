@@ -5,7 +5,7 @@ export function init() {
     width: 640,
     height: 480,
     parent: 'gameContainer',
-    scene: new CustomBootScene('start'),
+    scene: new CustomBootScene('mainMenu'),
     physics: {
       default: 'arcade',
       arcade: {
@@ -15,7 +15,9 @@ export function init() {
     pixelArt: true
   });
 
-  game.scene.add('start', new StartScene());
+  game.scene.add('play', new PlayScene());
+  game.scene.add('mainMenu', new MainMenu());
+  game.scene.add('lose', new LoseScene());
 
   return game;
 }
@@ -54,7 +56,7 @@ function setCamera(camera, sprite) {
 function inCircle(centerX, centerY) {
   const result = [];
   const radius = HARVEST_RADIUS * TILE_WIDTH;
-    //let sprayed = 0;
+  //let sprayed = 0;
 
   for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
     for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
@@ -72,7 +74,7 @@ function inCircle(centerX, centerY) {
   return result;
 }
 
-const StartScene = util.extend(Phaser.Scene, 'StartScene', {
+const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
   constructor: function() {
     this.constructor$Scene();
     this.keyboard = null;
@@ -81,7 +83,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
   },
   create() {
     this.scheduler = new Scheduler();
-    this.cameras.main.centerOn(20 / 2  * TILE_WIDTH, 15 / 2 * TILE_HEIGHT);
+    this.cameras.main.centerOn(20 / 2 * TILE_WIDTH, 15 / 2 * TILE_HEIGHT);
     this.physics.world.setBounds(0, 0, 20 * TILE_WIDTH, 15 * TILE_HEIGHT);
     //this.cameras.main.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
     //this.physics.world.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
@@ -120,7 +122,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       const tileY = event.data.tileY;
       if(event.type === 'grow') {
         if(MOLD_START_CHANCE > Math.random()) {
-          this.map.putTileAt(TILE_MOLD, tileX, tileY)
+          this.map.putTileAt(TILE_MOLD, tileX, tileY);
           this.moldGrowth.addFutureGrowth(tileX, tileY);
         } else if(this.map.getTileAt(tileX, tileY) === TILE_PLANT) {
           this.map.putTileAt(TILE_CARROT, tileX, tileY);
@@ -128,7 +130,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
             this.scheduler.addEvent(ANGER_WARNING_DELAY, 'anger-warning', {
               tileX,
               tileY
-            })
+            });
           }
         }
       } else if(event.type === 'anger-warning') {
@@ -146,7 +148,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       } else if(event.type === 'anger-pass') {
         this.map.putTileAt(TILE_CARROT, tileX, tileY);
       }
-      
+
       /*else if(event.type === 'spray') {
         this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
 
@@ -168,10 +170,10 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     //if(this.keyboard.isPressed(ACTION_KEY)) {
     this.harvest();
     this.checkExplosions();
-      /*if(moldSprayed !== 0) {
-        this.player.oxygen.increment(-moldSprayed / 60 * delta / 1000);
-        this.tileSelection.hide();
-      }*/
+    /*if(moldSprayed !== 0) {
+      this.player.oxygen.increment(-moldSprayed / 60 * delta / 1000);
+      this.tileSelection.hide();
+    }*/
     //}
 
     /*if(moldSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
@@ -198,6 +200,11 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     }*/
 
     this.keyboard.update();
+
+    if(this.player.health.isDepleted()) {
+      this.game.scene.stop(this);
+      this.game.scene.start('lose');
+    }
   },
   harvest() {
     const radius = HARVEST_RADIUS * TILE_WIDTH;
@@ -241,7 +248,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     for(let [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
       const tile = this.map.getTileAt(tileX, tileY);
       if(tile === TILE_ANGER_REAL) {
-        destroy = destroy.concat(inCircle((tileX + 1/2) * TILE_WIDTH, (tileY + 1/2) * TILE_WIDTH));
+        destroy = destroy.concat(inCircle((tileX + 1 / 2) * TILE_WIDTH, (tileY + 1 / 2) * TILE_WIDTH));
         this.player.health.increment(-EXPLOSION_DAMAGE);
       }
     }
@@ -437,7 +444,7 @@ const NumStat = util.extend(Object, 'NumStat', {
       this.level = this.max;
     }
   },
-  is_depleted() {
+  isDepleted() {
     return this.level <= 1e-5;
   }
 });
@@ -759,10 +766,37 @@ const MainMenu = util.extend(Phaser.Scene, 'MainMenu', {
     this.playButton = null;
   },
   create() {
-    this.playButton = new Button('Play');
+    this.playButton = new Button(this, 'Play!', 320, 240, 'play');
+  }
+});
+
+const LoseScene = util.extend(Phaser.Scene, 'LoseScene', {
+  constructor: function() {
+    this.constructor$Scene();
+  },
+  create() {
+    new Button(this, 'You Lost!', 320, 240, null);
+    new Button(this, 'Score: ' + 0, 320, 300, null);
+    new Button(this, 'Play Again!', 320, 360, 'play');
   }
 });
 
 const Button = util.extend(Object, 'Button', {
-  
-})
+  constructor: function(scene, text, x, y, sceneName) {
+    this.scene = scene;
+    this.sceneName = sceneName;
+    const outline = scene.add.rectangle(x, y, 300, 48, 0xFFFFFF);
+    const textSprite = scene.add.bitmapText(x, y, 'font', text, 32);
+    textSprite.setOrigin(0.5);
+    outline.setInteractive();
+    if(this.sceneName !== null) {
+      outline.addListener('pointerdown', this.nextScene, this);
+    }
+  },
+  nextScene() {
+    if(this.sceneName !== null) {
+      this.scene.game.scene.stop(this.scene);
+      this.scene.game.scene.run(this.sceneName);
+    }
+  }
+});

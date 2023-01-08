@@ -51,8 +51,8 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
   },
   create() {
     this.scheduler = new Scheduler();
-    this.cameras.main.setBounds(0, 0, 256 * 16 * 2, 256 * 16 * 2);
-    this.physics.world.setBounds(0, 0, 256 * 16 * 2, 256 * 16 * 2);
+    this.cameras.main.setBounds(0, 0, 256 * TILE_WIDTH, 256 * TILE_HEIGHT);
+    this.physics.world.setBounds(0, 0, 256 * TILE_WIDTH, 256 * TILE_HEIGHT);
 
     this.keyboard = new Keyboard(this, [
       MOVE_UP,

@@ -37,8 +37,8 @@ const ACTION_KEY = Phaser.Input.Keyboard.KeyCodes.SPACE;
 
 const PLAYER_VELOCITY = 100;
 const PLANT_GROWTH_TIME = 3000;
-const GOO_SPRAY_TIME = 0;
-const GOO_GROW_TIME = 3000;
+const MOLD_SPRAY_TIME = 0;
+const MOLD_GROW_TIME = 3000;
 
 function setCamera(camera, sprite) {
   sprite.cameraFilter = 0xFFFFFFFF ^ camera.id;
@@ -53,8 +53,10 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
   },
   create() {
     this.scheduler = new Scheduler();
-    this.cameras.main.setBounds(0, 0, 256 * TILE_WIDTH, 256 * TILE_HEIGHT);
-    this.physics.world.setBounds(0, 0, 256 * TILE_WIDTH, 256 * TILE_HEIGHT);
+    this.cameras.main.centerOn(20 / 2  * TILE_WIDTH, 15 / 2 * TILE_HEIGHT);
+    this.physics.world.setBounds(0, 0, 20 * TILE_WIDTH, 15 * TILE_HEIGHT);
+    //this.cameras.main.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
+    //this.physics.world.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
 
     this.keyboard = new Keyboard(this, [
       MOVE_UP,
@@ -73,48 +75,48 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       x: 64,
       y: 64
     });
-    this.tileSelection = new TileSelection(this, this.cameras.main, this.player, this.map);
+    //this.tileSelection = new TileSelection(this, this.cameras.main, this.player, this.map);
     this.hud = new Hud(this, this.player);
 
     this.physics.add.collider(this.player.sprite, this.map.layer);
     this.cameras.main.setZoom(2);
-    this.gooGrowth = new GooGrowth(this.map);
+    this.moldGrowth = new MoldGrowth(this.map);
   },
   update(time, delta) {
     this.hud.update();
     this.player.update(delta);
-    this.tileSelection.update(time);
+    //this.tileSelection.update(time);
 
     for(let event of this.scheduler.update(time)) {
       if(event.type === 'grow') {
         this.map.putTileAt(TILE_CARROT, event.data.tileX, event.data.tileY);
-      } else if(event.type === 'spray') {
+      } /*else if(event.type === 'spray') {
         this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
 
         for(let offset of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-          this.scheduler.addEvent(GOO_GROW_TIME, 'spread', {
+          this.scheduler.addEvent(MOLD_GROW_TIME, 'spread', {
             tileX: event.data.tileX + offset[0],
             tileY: event.data.tileY + offset[1]
           });
-        }
+        
       } else if(event.type === 'spread') {
-        this.growGoo(event.data.tileX, event.data.tileY);
-      }
+        this.growMold(event.data.tileX, event.data.tileY);
+      }*/
     }
 
-    this.gooGrowth.update(time);
+    this.moldGrowth.update(time);
 
-    let gooSprayed = 0;
+    //let moldSprayed = 0;
 
     if(this.keyboard.isPressed(ACTION_KEY)) {
-      gooSprayed = this.gooGrowth.sprayGoo(this.player.sprite.x, this.player.sprite.y);
-      if(gooSprayed !== 0) {
-        this.player.oxygen.increment(-gooSprayed / 60 * delta / 1000);
+      this.harvest();
+      /*if(moldSprayed !== 0) {
+        this.player.oxygen.increment(-moldSprayed / 60 * delta / 1000);
         this.tileSelection.hide();
-      }
+      }*/
     }
 
-    if(gooSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
+    /*if(moldSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
       const tileX = this.tileSelection.selectedX;
       const tileY = this.tileSelection.selectedY;
       const tile = this.map.getTileAt(tileX, tileY);
@@ -135,9 +137,43 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
         }
         this.map.putTileAt(TILE_WORKING_VENT, tileX, tileY);
       }
-    }
+    }*/
 
     this.keyboard.update();
+  },
+  harvest() {
+    const radius = HARVEST_RADIUS * TILE_WIDTH;
+    //let sprayed = 0;
+
+    for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
+      for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
+
+        const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+        if(distance < radius) {
+          const x = this.player.sprite.x - offsetX;
+          const y = this.player.sprite.y - offsetY;
+          const tileX = Math.floor(x / TILE_WIDTH);
+          const tileY = Math.floor(y / TILE_HEIGHT);
+          const tile = this.map.getTileAt(tileX, tileY);
+          if(tile === TILE_CARROT || tile === TILE_FARM) {
+            this.map.putTileAt(TILE_PLANT, tileX, tileY);
+            this.scheduler.addEvent(PLANT_GROWTH_TIME, 'grow', {
+              tileX,
+              tileY
+            });
+            //sprayed += 1;
+
+            /*this.removeFutureGrowth(tileX, tileY);
+            for(let neighbor of NEIGHBORS) {
+              if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_) {
+                this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
+              }
+            }*/
+          }
+        }
+      }
+    }
+    //return sprayed;
   },
 });
 
@@ -148,43 +184,16 @@ const NEIGHBORS = [
   [0, 1]
 ];
 
-const GooGrowth = util.extend(Object, 'GooGrowth', {
+const HARVEST_RADIUS = 2;
+
+const MoldGrowth = util.extend(Object, 'MoldGrowth', {
   constructor: function(map) {
     this.map = map;
     this.futureGrowth = new Map();
     this.time = null;
   },
-  sprayGoo(pointX, pointY) {
-    const radius = 2 * TILE_WIDTH;
-    let sprayed = 0;
-
-    for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
-      for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
-
-        const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-        if(distance < radius) {
-          const x = pointX - offsetX;
-          const y = pointY - offsetY;
-          const tileX = Math.floor(x / TILE_WIDTH);
-          const tileY = Math.floor(y / TILE_HEIGHT);
-          if(this.map.getTileAt(tileX, tileY) === TILE_GOO) {
-            this.map.putTileAt(TILE_FLOOR, tileX, tileY);
-            sprayed += 1;
-
-            this.removeFutureGrowth(tileX, tileY);
-            for(let neighbor of NEIGHBORS) {
-              if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_GOO) {
-                this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
-              }
-            }
-          }
-        }
-      }
-    }
-    return sprayed;
-  },
   addFutureGrowth(tileX, tileY) {
-    this.futureGrowth.set(`${tileX},${tileY}`, this.time + GOO_GROW_TIME);
+    this.futureGrowth.set(`${tileX},${tileY}`, this.time + MOLD_GROW_TIME);
   },
   removeFutureGrowth(tileX, tileY) {
     this.futureGrowth.delete(`${tileX},${tileY}`);
@@ -198,10 +207,11 @@ const GooGrowth = util.extend(Object, 'GooGrowth', {
         const parts = key.split(',');
         const tileX = Number.parseInt(parts[0]);
         const tileY = Number.parseInt(parts[1]);
-        if(this.map.getTileAt(tileX, tileY) === TILE_GOO) {
+        if(this.map.getTileAt(tileX, tileY) === TILE_MOLD) {
           for(let neighbor of NEIGHBORS) {
-            if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_FLOOR) {
-              this.map.putTileAt(TILE_GOO, tileX + neighbor[0], tileY + neighbor[1]);
+            const tile = this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]);
+            if(tile === TILE_PLANT || tile === TILE_CARROT) {
+              this.map.putTileAt(TILE_MOLD, tileX + neighbor[0], tileY + neighbor[1]);
               this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
             }
           }
@@ -221,7 +231,7 @@ const TILE_FARM = 2;
 const TILE_PLANT = 3;
 const TILE_FLOOR = 4;
 const TILE_CARROT = 5;
-const TILE_HORIZONTAL_WALL = 6;
+const TILE_ROCK = 6;
 const TILE_VERTICAL_WALL = 7;
 const TILE_TOPLEFT_WALL = 8;
 const TILE_TOPRIGHT_WALL = 9;
@@ -229,11 +239,10 @@ const TILE_BOTTOMLEFT_WALL = 10;
 const TILE_BOTTOMRIGHT_WALL = 11;
 const TILE_WORKING_VENT = 12;
 const TILE_BROKEN_VENT = 13;
-const TILE_GOO = 14;
+const TILE_MOLD = 14;
 
 const SOLID_TILES = [
-  TILE_FARM, TILE_PLANT, TILE_CARROT,
-  TILE_HORIZONTAL_WALL, TILE_VERTICAL_WALL, TILE_TOPLEFT_WALL,
+  TILE_ROCK, TILE_VERTICAL_WALL, TILE_TOPLEFT_WALL,
   TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL,
   TILE_WORKING_VENT, TILE_BROKEN_VENT
 ];
@@ -269,7 +278,7 @@ const GameMap = util.extend(Object, 'GameMap', {
     this.layer = map.createLayer('ground', tileset, 0, 0);
     setCamera(camera, this.layer);
     map.setCollision(SOLID_TILES, undefined, undefined, this.layer);
-    const roomLayer = map.getObjectLayer('rooms');
+    /*const roomLayer = map.getObjectLayer('rooms');
     const rooms = new Map();
     for(const roomObj of roomLayer.objects) {
       if(!roomObj.rectangle) {
@@ -297,7 +306,7 @@ const GameMap = util.extend(Object, 'GameMap', {
         }
       }
     }
-    this.rooms = Array.from(rooms.values());
+    this.rooms = Array.from(rooms.values());*/
   },
   isTileActionable(x, y) {
     return [TILE_FARM, TILE_CARROT, TILE_BROKEN_VENT].includes(this.getTileAt(x, y));
@@ -370,7 +379,7 @@ const Player = util.extend(Object, 'Player', {
     this.sprite = scene.physics.add.image(x, y, 'player');
     this.sprite.setCollideWorldBounds(true);
     setCamera(camera, this.sprite);
-    camera.startFollow(this.sprite);
+    //camera.startFollow(this.sprite);
     this.keyboard = keyboard;
     this.oxygen = new NumStat(OXYGEN_MAX_LEVEL, OXYGEN_MAX_LEVEL);
     this.health = new NumStat(HEALTH_MAX_LEVEL, HEALTH_MAX_LEVEL);
@@ -387,16 +396,16 @@ const Player = util.extend(Object, 'Player', {
     const tileUp = Math.floor(this.sprite.y / TILE_HEIGHT - 1 / 2 * 0.95);
     const tileDown = Math.floor(this.sprite.y / TILE_HEIGHT + 1 / 2 * 0.95);
 
-    const inGoo = this.map.getTileAt(tileLeft, tileUp) === TILE_GOO &&
-      this.map.getTileAt(tileLeft, tileDown) === TILE_GOO &&
-      this.map.getTileAt(tileRight, tileUp) === TILE_GOO &&
-      this.map.getTileAt(tileRight, tileDown) === TILE_GOO;
+    const inMold = this.map.getTileAt(tileLeft, tileUp) === TILE_MOLD &&
+      this.map.getTileAt(tileLeft, tileDown) === TILE_MOLD &&
+      this.map.getTileAt(tileRight, tileUp) === TILE_MOLD &&
+      this.map.getTileAt(tileRight, tileDown) === TILE_MOLD;
 
-    if(inGoo) {
+    if(inMold) {
       this.health.increment(-5 * delta / 1000);
     }
 
-    let room = null;
+    /*let room = null;
 
     for(let i of this.map.rooms) {
       if(i.contains(this.sprite.getBounds())) {
@@ -415,7 +424,7 @@ const Player = util.extend(Object, 'Player', {
       factor = room.workingVents / room.totalVents - 1;
     }
 
-    this.oxygen.increment(delta / 1000 * factor);
+    this.oxygen.increment(delta / 1000 * factor);*/
 
     let change = null;
 

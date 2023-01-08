@@ -88,16 +88,23 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       }
     }
 
-    if(this.keyboard.isPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
-      const tile = this.map.getTileAt(this.tileSelection.selectedX, this.tileSelection.selectedY);
+    if(this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
+      const tileX = this.tileSelection.selectedX;
+      const tileY = this.tileSelection.selectedY;
+      const tile = this.map.getTileAt(tileX, tileY);
       if(tile === TILE_FARM) {
-        this.map.putTileAt(TILE_PLANT, this.tileSelection.selectedX, this.tileSelection.selectedY);
+        this.map.putTileAt(TILE_PLANT, tileX, tileY);
         this.scheduler.addEvent(PLANT_GROWTH_TIME, 'grow', {
-          tileX: this.tileSelection.selectedX,
-          tileY: this.tileSelection.selectedY
+          tileX,
+          tileY
         });
+      } else if(tile === TILE_CARROT) {
+        this.map.putTileAt(TILE_FARM, tileX, tileY);
+        this.player.food.increment(1);
       }
     }
+
+    this.keyboard.update();
   }
 });
 
@@ -119,7 +126,7 @@ const GameMap = util.extend(Object, 'GameMap', {
     map.setCollision([TILE_FARM, TILE_PLANT, TILE_CARROT], undefined, undefined, this.layer);
   },
   isTileActionable(x, y) {
-    return this.getTileAt(x, y) === TILE_FARM;
+    return [TILE_FARM, TILE_CARROT].includes(this.getTileAt(x, y));
   },
   getTileAt(x, y) {
     const tile = this.layer.getTileAt(x, y);
@@ -137,12 +144,22 @@ const GameMap = util.extend(Object, 'GameMap', {
 const Keyboard = util.extend(Object, 'Keyboard', {
   constructor: function(scene, keys) {
     this.keys = {};
+    this.wasPressed = {};
     for(let key of keys) {
       this.keys[key] = scene.input.keyboard.addKey(key);
+      this.wasPressed[key] = false;
     }
   },
   isPressed(key) {
     return this.keys[key].isDown;
+  },
+  isJustPressed(key) {
+    return this.isPressed(key) && !this.wasPressed[key];
+  },
+  update() {
+    for(let key in this.keys) {
+      this.wasPressed[key] = this.isPressed(key);
+    }
   }
 });
 

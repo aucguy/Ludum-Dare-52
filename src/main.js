@@ -37,6 +37,8 @@ const ACTION_KEY = Phaser.Input.Keyboard.KeyCodes.SPACE;
 
 const PLAYER_VELOCITY = 100;
 const PLANT_GROWTH_TIME = 3000;
+const GOO_SPRAY_TIME = 0;
+const GOO_GROW_TIME = 3000;
 
 function setCamera(camera, sprite) {
   sprite.cameraFilter = 0xFFFFFFFF ^ camera.id;
@@ -76,6 +78,7 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
 
     this.physics.add.collider(this.player.sprite, this.map.layer);
     this.cameras.main.setZoom(2);
+    this.gooGrowth = new GooGrowth(this.map);
   },
   update(time, delta) {
     this.hud.update();
@@ -85,10 +88,33 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     for(let event of this.scheduler.update(time)) {
       if(event.type === 'grow') {
         this.map.putTileAt(TILE_CARROT, event.data.tileX, event.data.tileY);
+      } else if(event.type === 'spray') {
+        this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
+
+        for(let offset of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          this.scheduler.addEvent(GOO_GROW_TIME, 'spread', {
+            tileX: event.data.tileX + offset[0],
+            tileY: event.data.tileY + offset[1]
+          });
+        }
+      } else if(event.type === 'spread') {
+        this.growGoo(event.data.tileX, event.data.tileY);
       }
     }
 
-    if(this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
+    this.gooGrowth.update(time);
+
+    let gooSprayed = 0;
+
+    if(this.keyboard.isPressed(ACTION_KEY)) {
+      gooSprayed = this.gooGrowth.sprayGoo(this.player.sprite.x, this.player.sprite.y);
+      if(gooSprayed !== 0) {
+        this.player.oxygen.increment(-gooSprayed / 60 * delta / 1000);
+        this.tileSelection.hide();
+      }
+    }
+
+    if(gooSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
       const tileX = this.tileSelection.selectedX;
       const tileY = this.tileSelection.selectedY;
       const tile = this.map.getTileAt(tileX, tileY);
@@ -112,6 +138,79 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
     }
 
     this.keyboard.update();
+  },
+});
+
+const NEIGHBORS = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1]
+];
+
+const GooGrowth = util.extend(Object, 'GooGrowth', {
+  constructor: function(map) {
+    this.map = map;
+    this.futureGrowth = new Map();
+    this.time = null;
+  },
+  sprayGoo(pointX, pointY) {
+    const radius = 2 * TILE_WIDTH;
+    let sprayed = 0;
+
+    for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
+      for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
+
+        const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+        if(distance < radius) {
+          const x = pointX - offsetX;
+          const y = pointY - offsetY;
+          const tileX = Math.floor(x / TILE_WIDTH);
+          const tileY = Math.floor(y / TILE_HEIGHT);
+          if(this.map.getTileAt(tileX, tileY) === TILE_GOO) {
+            this.map.putTileAt(TILE_FLOOR, tileX, tileY);
+            sprayed += 1;
+
+            this.removeFutureGrowth(tileX, tileY);
+            for(let neighbor of NEIGHBORS) {
+              if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_GOO) {
+                this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
+              }
+            }
+          }
+        }
+      }
+    }
+    return sprayed;
+  },
+  addFutureGrowth(tileX, tileY) {
+    this.futureGrowth.set(`${tileX},${tileY}`, this.time + GOO_GROW_TIME);
+  },
+  removeFutureGrowth(tileX, tileY) {
+    this.futureGrowth.delete(`${tileX},${tileY}`);
+  },
+  update(time) {
+    this.time = time;
+    const toRemove = [];
+    for(let [key, time] of this.futureGrowth.entries()) {
+      if(time <= this.time) {
+        toRemove.push(key);
+        const parts = key.split(',');
+        const tileX = Number.parseInt(parts[0]);
+        const tileY = Number.parseInt(parts[1]);
+        if(this.map.getTileAt(tileX, tileY) === TILE_GOO) {
+          for(let neighbor of NEIGHBORS) {
+            if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_FLOOR) {
+              this.map.putTileAt(TILE_GOO, tileX + neighbor[0], tileY + neighbor[1]);
+              this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
+            }
+          }
+        }
+      }
+    }
+    for(let i of toRemove) {
+      this.futureGrowth.delete(i);
+    }
   }
 });
 
@@ -130,6 +229,7 @@ const TILE_BOTTOMLEFT_WALL = 10;
 const TILE_BOTTOMRIGHT_WALL = 11;
 const TILE_WORKING_VENT = 12;
 const TILE_BROKEN_VENT = 13;
+const TILE_GOO = 14;
 
 const SOLID_TILES = [
   TILE_FARM, TILE_PLANT, TILE_CARROT,
@@ -137,19 +237,6 @@ const SOLID_TILES = [
   TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL,
   TILE_WORKING_VENT, TILE_BROKEN_VENT
 ];
-
-function isInside(tile) {
-  return tile === TILE_FLOOR;
-}
-
-/*const Rectangle = util.extend(Object, 'Rectangle', {
-  constructor: function(x, y, width, height) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-  }
-});*/
 
 const Room = util.extend(Object, 'Room', {
   constructor: function() {
@@ -295,15 +382,19 @@ const Player = util.extend(Object, 'Player', {
   update(delta) {
     this.sprite.setVelocity(0);
 
-    /*const tileLeft = Math.floor(this.sprite.x / TILE_WIDTH - 1 / 2 * 0.95);
+    const tileLeft = Math.floor(this.sprite.x / TILE_WIDTH - 1 / 2 * 0.95);
     const tileRight = Math.floor(this.sprite.x / TILE_WIDTH + 1 / 2 * 0.95);
     const tileUp = Math.floor(this.sprite.y / TILE_HEIGHT - 1 / 2 * 0.95);
     const tileDown = Math.floor(this.sprite.y / TILE_HEIGHT + 1 / 2 * 0.95);
 
-    const inside = isInside(this.map.getTileAt(tileLeft, tileUp)) &&
-      isInside(this.map.getTileAt(tileLeft, tileDown)) &&
-      isInside(this.map.getTileAt(tileRight, tileUp)) &&
-      isInside(this.map.getTileAt(tileRight, tileDown));*/
+    const inGoo = this.map.getTileAt(tileLeft, tileUp) === TILE_GOO &&
+      this.map.getTileAt(tileLeft, tileDown) === TILE_GOO &&
+      this.map.getTileAt(tileRight, tileUp) === TILE_GOO &&
+      this.map.getTileAt(tileRight, tileDown) === TILE_GOO;
+
+    if(inGoo) {
+      this.health.increment(-5 * delta / 1000);
+    }
 
     let room = null;
 
@@ -546,6 +637,9 @@ const TileSelection = util.extend(Object, 'TileSelection', {
   },
   isSelected() {
     return this.selectedX !== null && this.selectedY !== null;
+  },
+  hide() {
+    this.sprite.alpha = 0;
   }
 });
 

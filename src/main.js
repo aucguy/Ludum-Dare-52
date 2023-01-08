@@ -68,8 +68,8 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
       camera: this.cameras.main,
       keyboard: this.keyboard,
       map: this.map,
-      x: 0,
-      y: 0
+      x: 64,
+      y: 64
     });
     this.tileSelection = new TileSelection(this, this.cameras.main, this.player, this.map);
     this.hud = new Hud(this, this.player);
@@ -108,10 +108,24 @@ const StartScene = util.extend(Phaser.Scene, 'StartScene', {
   }
 });
 
+const TILE_VOID = -1;
+const TILE_EMPTY = 0;
+const TILE_GROUND = 1;
 const TILE_FARM = 2;
 const TILE_PLANT = 3;
 const TILE_FLOOR = 4;
 const TILE_CARROT = 5;
+const TILE_HORIZONTAL_WALL = 6;
+const TILE_VERTICAL_WALL = 7;
+const TILE_TOPLEFT_WALL = 8;
+const TILE_TOPRIGHT_WALL = 9;
+const TILE_BOTTOMLEFT_WALL = 10;
+const TILE_BOTTOMRIGHT_WALL = 11;
+
+const SOLID_TILES = [TILE_FARM, TILE_PLANT, TILE_CARROT,
+  TILE_HORIZONTAL_WALL, TILE_VERTICAL_WALL, TILE_TOPLEFT_WALL,
+  TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL
+];
 
 function isInside(tile) {
   return tile === TILE_FLOOR;
@@ -123,7 +137,7 @@ const GameMap = util.extend(Object, 'GameMap', {
     const tileset = map.addTilesetImage('tileset');
     this.layer = map.createLayer('ground', tileset, 0, 0);
     setCamera(camera, this.layer);
-    map.setCollision([TILE_FARM, TILE_PLANT, TILE_CARROT], undefined, undefined, this.layer);
+    map.setCollision(SOLID_TILES, undefined, undefined, this.layer);
   },
   isTileActionable(x, y) {
     return [TILE_FARM, TILE_CARROT].includes(this.getTileAt(x, y));
@@ -458,7 +472,7 @@ const Scheduler = util.extend(Object, 'Scheduler', {
       type,
       data
     });
-    this.events.sort((a, b) => b.time - a.time);
+    this.events.sort((a, b) => a.time - b.time);
   },
   update(time) {
     this.time = time;

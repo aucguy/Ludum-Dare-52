@@ -1,11 +1,53 @@
-import * as util from '/lib/util.js';
+let errored = false;
+let game = null;
 
-export function init() {
-  const game = new Phaser.Game({
+window.addEventListener('error', event => {
+  if(errored) {
+    console.warn('multiple errors');
+    return;
+  }
+  
+  errored = true;
+  
+  //swap displays and display error
+  var errorDiv = document.getElementById('error div');
+  var errorText = document.getElementById('error text');
+  var display = document.getElementById('display');
+  var loadingLogo = document.getElementById('loadingLogo');
+
+  if(errorText && event.error) {
+    errorText.innerHTML = event.error.stack;
+  }
+  if(errorDiv) {
+    errorDiv.style.display = 'block';
+  }
+  
+  if(loadingLogo !== null) {
+    loadingLogo.style.display = 'none';
+  }
+  
+  if(display !== null) {
+    display.style.display = 'none';
+  }
+  
+  if(game !== null) {
+	game.sound.stopAll();
+    game.destroy();
+    game.canvas.style.display = 'none';
+  }
+});
+
+function init() {
+  var loadingLogo = document.getElementById('loadingLogo');
+  if(loadingLogo !== null) {
+    loadingLogo.parentElement.removeChild(loadingLogo);
+  }
+
+  game = new Phaser.Game({
     width: 640,
     height: 480,
     parent: 'gameContainer',
-    scene: new CustomBootScene('mainMenu'),
+    scene: new BootScene(),
     physics: {
       default: 'arcade',
       arcade: {
@@ -22,14 +64,19 @@ export function init() {
   return game;
 }
 
-const CustomBootScene = util.extend(util.BootScene, 'CustomBootScene', {
-  constructor: function(nextScene) {
-    this.constructor$BootScene(nextScene);
-  },
-  create() {
-    this.create$BootScene();
+class BootScene extends Phaser.Scene {
+  preload() {
+    this.load.image('player', 'assets/image/player.png');
+    this.load.image('tileset', 'assets/image/tileset.png');
+    this.load.image('carrot', 'assets/image/carrot.png');
+    this.load.tilemapTiledJSON('map', 'assets/map.json');
+    this.load.bitmapFont('font', 'assets/image/digit.png', 'assets/font.xml');
   }
-});
+  update() {
+    console.log('boot scene');
+    this.scene.start('mainMenu');
+  }
+};
 
 const MOVE_UP = Phaser.Input.Keyboard.KeyCodes.W;
 const MOVE_LEFT = Phaser.Input.Keyboard.KeyCodes.A;
@@ -74,13 +121,13 @@ function inCircle(centerX, centerY) {
   return result;
 }
 
-const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
-  constructor: function() {
-    this.constructor$Scene();
+class PlayScene extends Phaser.Scene {
+  constructor() {
+    super();
     this.keyboard = null;
     this.player = null;
     this.hud = null;
-  },
+  }
   create() {
     this.scheduler = new Scheduler();
     this.cameras.main.centerOn(20 / 2 * TILE_WIDTH, 15 / 2 * TILE_HEIGHT);
@@ -111,7 +158,7 @@ const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
     this.physics.add.collider(this.player.sprite, this.map.layer);
     this.cameras.main.setZoom(2);
     this.moldGrowth = new MoldGrowth(this.map);
-  },
+  }
   update(time, delta) {
     this.hud.update();
     this.player.update(delta);
@@ -205,7 +252,7 @@ const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
       this.game.scene.stop(this);
       this.game.scene.start('lose');
     }
-  },
+  }
   harvest() {
     const radius = HARVEST_RADIUS * TILE_WIDTH;
     //let sprayed = 0;
@@ -242,7 +289,7 @@ const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
       }
     }
     //return sprayed;
-  },
+  }
   checkExplosions() {
     let destroy = [];
     for(let [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
@@ -260,7 +307,7 @@ const PlayScene = util.extend(Phaser.Scene, 'PlayScene', {
       }
     }
   }
-});
+}
 
 const NEIGHBORS = [
   [-1, 0],
@@ -271,18 +318,18 @@ const NEIGHBORS = [
 
 const HARVEST_RADIUS = 2;
 
-const MoldGrowth = util.extend(Object, 'MoldGrowth', {
-  constructor: function(map) {
+class MoldGrowth {
+  constructor(map) {
     this.map = map;
     this.futureGrowth = new Map();
     this.time = null;
-  },
+  }
   addFutureGrowth(tileX, tileY) {
     this.futureGrowth.set(`${tileX},${tileY}`, this.time + MOLD_GROW_TIME);
-  },
+  }
   removeFutureGrowth(tileX, tileY) {
     this.futureGrowth.delete(`${tileX},${tileY}`);
-  },
+  }
   update(time) {
     this.time = time;
     const toRemove = [];
@@ -307,7 +354,7 @@ const MoldGrowth = util.extend(Object, 'MoldGrowth', {
       this.futureGrowth.delete(i);
     }
   }
-});
+}
 
 const TILE_VOID = -1;
 const TILE_EMPTY = 0;
@@ -332,12 +379,12 @@ const SOLID_TILES = [
   TILE_WORKING_VENT, TILE_BROKEN_VENT
 ];
 
-const Room = util.extend(Object, 'Room', {
-  constructor: function() {
+class Room {
+  constructor() {
     this.workingVents = 0;
     this.totalVents = 0;
     this.rectangles = [];
-  },
+  }
   contains(rect) {
     for(let rectangle of this.rectangles) {
       if(Phaser.Geom.Rectangle.ContainsRect(rectangle, rect)) {
@@ -345,7 +392,7 @@ const Room = util.extend(Object, 'Room', {
       }
     }
     return false;
-  },
+  }
   containsPoint(x, y) {
     for(let rectangle of this.rectangles) {
       if(rectangle.contains(x, y)) {
@@ -354,10 +401,10 @@ const Room = util.extend(Object, 'Room', {
     }
     return false;
   }
-});
+}
 
-const GameMap = util.extend(Object, 'GameMap', {
-  constructor: function(scene, camera) {
+class GameMap {
+  constructor(scene, camera) {
     const map = scene.make.tilemap({ key: 'map' });
     const tileset = map.addTilesetImage('tileset');
     this.layer = map.createLayer('ground', tileset, 0, 0);
@@ -392,10 +439,10 @@ const GameMap = util.extend(Object, 'GameMap', {
       }
     }
     this.rooms = Array.from(rooms.values());*/
-  },
+  }
   isTileActionable(x, y) {
     return [TILE_FARM, TILE_CARROT, TILE_BROKEN_VENT].includes(this.getTileAt(x, y));
-  },
+  }
   getTileAt(x, y) {
     const tile = this.layer.getTileAt(x, y);
     if(tile === null) {
@@ -403,39 +450,39 @@ const GameMap = util.extend(Object, 'GameMap', {
     } else {
       return tile.index;
     }
-  },
+  }
   putTileAt(index, x, y) {
     this.layer.putTileAt(index, x, y);
   }
-});
+}
 
-const Keyboard = util.extend(Object, 'Keyboard', {
-  constructor: function(scene, keys) {
+class Keyboard {
+  constructor(scene, keys) {
     this.keys = {};
     this.wasPressed = {};
     for(let key of keys) {
       this.keys[key] = scene.input.keyboard.addKey(key);
       this.wasPressed[key] = false;
     }
-  },
+  }
   isPressed(key) {
     return this.keys[key].isDown;
-  },
+  }
   isJustPressed(key) {
     return this.isPressed(key) && !this.wasPressed[key];
-  },
+  }
   update() {
     for(let key in this.keys) {
       this.wasPressed[key] = this.isPressed(key);
     }
   }
-});
+}
 
-const NumStat = util.extend(Object, 'NumStat', {
-  constructor: function(level, max) {
+class NumStat {
+  constructor(level, max) {
     this.level = level;
     this.max = max;
-  },
+  }
   increment(amount) {
     this.level += amount;
     if(this.level < 0) {
@@ -443,11 +490,11 @@ const NumStat = util.extend(Object, 'NumStat', {
     } else if(this.level > this.max) {
       this.level = this.max;
     }
-  },
+  }
   isDepleted() {
     return this.level <= 1e-5;
   }
-});
+}
 
 const Direction = {
   NONE: 'none',
@@ -457,8 +504,8 @@ const Direction = {
   RIGHT: 'right'
 };
 
-const Player = util.extend(Object, 'Player', {
-  constructor: function(args) {
+class Player {
+  constructor(args) {
     const { scene, camera, keyboard, map, x, y } = args;
     this.map = map;
     this.sprite = scene.physics.add.image(x, y, 'player');
@@ -472,7 +519,7 @@ const Player = util.extend(Object, 'Player', {
     this.horizontalDirection = Direction.NONE;
     this.verticalDirection = Direction.NONE;
     this.lastDirection = Direction.NONE;
-  },
+  }
   update(delta) {
     this.sprite.setVelocity(0);
 
@@ -580,15 +627,15 @@ const Player = util.extend(Object, 'Player', {
       this.sprite.setVelocity(velocityX * magnitude, velocityY * magnitude);
     }
   }
-});
+}
 
 const BAR_HEIGHT = 20;
 const BAR_BACKGROUND_COLOR = 0xFFFFFF;
 const BAR_OUTLINE_WIDTH = 3;
 const BAR_OUTLINE_COLOR = 0x000000;
 
-const BarDisplay = util.extend(Object, 'BarDisplay', {
-  constructor: function(args) {
+class BarDisplay {
+  constructor(args) {
     const { scene, camera, x, y, color, stat } = args;
     this.stat = stat;
 
@@ -600,14 +647,14 @@ const BarDisplay = util.extend(Object, 'BarDisplay', {
     this.bar = scene.add.rectangle(x, y, this.stat.level, BAR_HEIGHT, color);
     setCamera(camera, this.bar);
     this.bar.setOrigin(0);
-  },
+  }
   update() {
     this.bar.width = this.stat.level;
   }
-});
+}
 
-const ItemDisplay = util.extend(Object, 'ItemDisplay', {
-  constructor: function(args) {
+class ItemDisplay {
+  constructor(args) {
     const { scene, camera, x, y, stat, icon } = args;
     this.stat = stat;
 
@@ -623,17 +670,17 @@ const ItemDisplay = util.extend(Object, 'ItemDisplay', {
     this.digit = scene.add.bitmapText(x, y + 4, 'font', this.stat.level + '', 32);
     setCamera(camera, this.digit);
     this.digit.setOrigin(0);
-  },
+  }
   update() {
     this.digit.text = this.stat.level + '';
   }
-});
+}
 
 const OXYGEN_MAX_LEVEL = 100;
 const HEALTH_MAX_LEVEL = 100;
 
-const Hud = util.extend(Object, 'Hud', {
-  constructor: function(scene, player) {
+class Hud {
+  constructor(scene, player) {
     this.camera = scene.cameras.add(0, 0, scene.cameras.main.width, scene.cameras.main.height);
 
     /*this.oxygenBar = new BarDisplay({
@@ -662,19 +709,19 @@ const Hud = util.extend(Object, 'Hud', {
       icon: 'carrot',
       stat: player.food
     });
-  },
+  }
   update() {
     //this.oxygenBar.update();
     this.healthBar.update();
     this.foodDisplay.update();
   }
-});
+}
 
 const TILE_WIDTH = 16;
 const TILE_HEIGHT = 16;
 
-const TileSelection = util.extend(Object, 'TileSelection', {
-  constructor: function(scene, camera, player, map) {
+class TileSelection {
+  constructor(scene, camera, player, map) {
     this.player = player;
     this.map = map;
     this.sprite = scene.add.rectangle(0, 0, TILE_WIDTH, TILE_HEIGHT, 0xFFFFFF);
@@ -682,7 +729,7 @@ const TileSelection = util.extend(Object, 'TileSelection', {
     setCamera(camera, this.sprite);
     this.selectedX = null;
     this.selectedY = null;
-  },
+  }
   update(time) {
     let visible = null;
     let dirX = null;
@@ -728,20 +775,20 @@ const TileSelection = util.extend(Object, 'TileSelection', {
       this.selectedX = null;
       this.selectedY = null;
     }
-  },
+  }
   isSelected() {
     return this.selectedX !== null && this.selectedY !== null;
-  },
+  }
   hide() {
     this.sprite.alpha = 0;
   }
-});
+}
 
-const Scheduler = util.extend(Object, 'Scheduler', {
-  constructor: function() {
+class Scheduler {
+  constructor() {
     this.events = [];
     this.time = null;
-  },
+  }
   addEvent(delay, type, data) {
     this.events.push({
       time: this.time + delay,
@@ -749,7 +796,7 @@ const Scheduler = util.extend(Object, 'Scheduler', {
       data
     });
     this.events.sort((a, b) => a.time - b.time);
-  },
+  }
   update(time) {
     this.time = time;
     let index = 0;
@@ -758,31 +805,29 @@ const Scheduler = util.extend(Object, 'Scheduler', {
     }
     return this.events.splice(0, index);
   }
-});
+}
 
-const MainMenu = util.extend(Phaser.Scene, 'MainMenu', {
-  constructor: function() {
-    this.constructor$Scene();
+class MainMenu extends Phaser.Scene {
+  constructor() {
+    super();
     this.playButton = null;
-  },
+  }
   create() {
+    console.log('main menu scene');
     this.playButton = new Button(this, 'Play!', 320, 240, 'play');
   }
-});
+}
 
-const LoseScene = util.extend(Phaser.Scene, 'LoseScene', {
-  constructor: function() {
-    this.constructor$Scene();
-  },
+class LoseScene extends Phaser.Scene {
   create() {
     new Button(this, 'You Lost!', 320, 240, null);
     new Button(this, 'Score: ' + 0, 320, 300, null);
     new Button(this, 'Play Again!', 320, 360, 'play');
   }
-});
+}
 
-const Button = util.extend(Object, 'Button', {
-  constructor: function(scene, text, x, y, sceneName) {
+class Button {
+  constructor(scene, text, x, y, sceneName) {
     this.scene = scene;
     this.sceneName = sceneName;
     const outline = scene.add.rectangle(x, y, 300, 48, 0xFFFFFF);
@@ -792,11 +837,13 @@ const Button = util.extend(Object, 'Button', {
     if(this.sceneName !== null) {
       outline.addListener('pointerdown', this.nextScene, this);
     }
-  },
+  }
   nextScene() {
     if(this.sceneName !== null) {
       this.scene.game.scene.stop(this.scene);
       this.scene.game.scene.run(this.sceneName);
     }
   }
-});
+}
+
+document.addEventListener('DOMContentLoaded', init);

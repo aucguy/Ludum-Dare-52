@@ -103,7 +103,6 @@ function setCamera(camera, sprite) {
 function inCircle(centerX, centerY) {
   const result = [];
   const radius = HARVEST_RADIUS * TILE_WIDTH;
-  //let sprayed = 0;
 
   for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
     for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
@@ -132,8 +131,6 @@ class PlayScene extends Phaser.Scene {
     this.scheduler = new Scheduler();
     this.cameras.main.centerOn(20 / 2 * TILE_WIDTH, 15 / 2 * TILE_HEIGHT);
     this.physics.world.setBounds(0, 0, 20 * TILE_WIDTH, 15 * TILE_HEIGHT);
-    //this.cameras.main.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
-    //this.physics.world.setBounds(-20 / 4 * TILE_WIDTH, -15 / 4 * TILE_HEIGHT, 20 / 4 * TILE_WIDTH, 15 / 4 * TILE_HEIGHT);
 
     this.keyboard = new Keyboard(this, [
       MOVE_UP,
@@ -152,7 +149,6 @@ class PlayScene extends Phaser.Scene {
       x: 64,
       y: 64
     });
-    //this.tileSelection = new TileSelection(this, this.cameras.main, this.player, this.map);
     this.hud = new Hud(this, this.player);
 
     this.physics.add.collider(this.player.sprite, this.map.layer);
@@ -162,7 +158,6 @@ class PlayScene extends Phaser.Scene {
   update(time, delta) {
     this.hud.update();
     this.player.update(delta);
-    //this.tileSelection.update(time);
 
     for(let event of this.scheduler.update(time)) {
       const tileX = event.data.tileX;
@@ -195,56 +190,12 @@ class PlayScene extends Phaser.Scene {
       } else if(event.type === 'anger-pass') {
         this.map.putTileAt(TILE_CARROT, tileX, tileY);
       }
-
-      /*else if(event.type === 'spray') {
-        this.map.putTileAt(TILE_FLOOR, event.data.tileX, event.data.tileY);
-
-        for(let offset of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-          this.scheduler.addEvent(MOLD_GROW_TIME, 'spread', {
-            tileX: event.data.tileX + offset[0],
-            tileY: event.data.tileY + offset[1]
-          });
-        
-      } else if(event.type === 'spread') {
-        this.growMold(event.data.tileX, event.data.tileY);
-      }*/
     }
 
     this.moldGrowth.update(time);
 
-    //let moldSprayed = 0;
-
-    //if(this.keyboard.isPressed(ACTION_KEY)) {
     this.harvest();
     this.checkExplosions();
-    /*if(moldSprayed !== 0) {
-      this.player.oxygen.increment(-moldSprayed / 60 * delta / 1000);
-      this.tileSelection.hide();
-    }*/
-    //}
-
-    /*if(moldSprayed === 0 && this.keyboard.isJustPressed(ACTION_KEY) && this.tileSelection.isSelected()) {
-      const tileX = this.tileSelection.selectedX;
-      const tileY = this.tileSelection.selectedY;
-      const tile = this.map.getTileAt(tileX, tileY);
-      if(tile === TILE_FARM) {
-        this.map.putTileAt(TILE_PLANT, tileX, tileY);
-        this.scheduler.addEvent(PLANT_GROWTH_TIME, 'grow', {
-          tileX,
-          tileY
-        });
-      } else if(tile === TILE_CARROT) {
-        this.map.putTileAt(TILE_FARM, tileX, tileY);
-        this.player.food.increment(1);
-      } else if(tile === TILE_BROKEN_VENT) {
-        for(let room of this.map.rooms) {
-          if(room.containsPoint(tileX * TILE_WIDTH, tileY * TILE_HEIGHT)) {
-            room.workingVents++;
-          }
-        }
-        this.map.putTileAt(TILE_WORKING_VENT, tileX, tileY);
-      }
-    }*/
 
     this.keyboard.update();
 
@@ -255,17 +206,7 @@ class PlayScene extends Phaser.Scene {
   }
   harvest() {
     const radius = HARVEST_RADIUS * TILE_WIDTH;
-    //let sprayed = 0;
-
-    /*for(let offsetX = -radius; offsetX <= radius; offsetX += TILE_WIDTH) {
-      for(let offsetY = -radius; offsetY <= radius; offsetY += TILE_HEIGHT) {
-
-        const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
-        if(distance < radius) {
-          const x = this.player.sprite.x - offsetX;
-          const y = this.player.sprite.y - offsetY;
-          const tileX = Math.floor(x / TILE_WIDTH);
-          const tileY = Math.floor(y / TILE_HEIGHT);*/
+    
     for(let [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
       const tile = this.map.getTileAt(tileX, tileY);
       if(tile === TILE_CARROT || tile === TILE_FARM || tile === TILE_MOLD) {
@@ -275,20 +216,11 @@ class PlayScene extends Phaser.Scene {
           tileX,
           tileY
         });
-        //sprayed += 1;
-
-        /*this.removeFutureGrowth(tileX, tileY);
-        for(let neighbor of NEIGHBORS) {
-          if(this.map.getTileAt(tileX + neighbor[0], tileY + neighbor[1]) === TILE_) {
-            this.addFutureGrowth(tileX + neighbor[0], tileY + neighbor[1]);
-          }
-        }*/
       }
       if(tile === TILE_CARROT) {
         this.player.food.increment(1);
       }
     }
-    //return sprayed;
   }
   checkExplosions() {
     let destroy = [];
@@ -410,35 +342,6 @@ class GameMap {
     this.layer = map.createLayer('ground', tileset, 0, 0);
     setCamera(camera, this.layer);
     map.setCollision(SOLID_TILES, undefined, undefined, this.layer);
-    /*const roomLayer = map.getObjectLayer('rooms');
-    const rooms = new Map();
-    for(const roomObj of roomLayer.objects) {
-      if(!roomObj.rectangle) {
-        continue;
-      }
-      const id = roomObj.properties.find(prop => prop.name === 'id').value + '';
-      if(!rooms.has(id)) {
-        rooms.set(id, new Room());
-      }
-      const rectangle = new Phaser.Geom.Rectangle(roomObj.x, roomObj.y, roomObj.width, roomObj.height);
-      rooms.get(id).rectangles.push(rectangle);
-
-      const minX = Math.floor(rectangle.x / TILE_WIDTH);
-      const minY = Math.floor(rectangle.y / TILE_HEIGHT);
-      const maxX = minX + Math.ceil(rectangle.width / TILE_WIDTH);
-      const maxY = minY + Math.ceil(rectangle.height / TILE_HEIGHT);
-      for(let x = minX; x <= maxX; x++) {
-        for(let y = minY; y <= maxY; y++) {
-          if(this.getTileAt(x, y) == TILE_WORKING_VENT) {
-            rooms.get(id).workingVents++;
-            rooms.get(id).totalVents++;
-          } else if(this.getTileAt(x, y) == TILE_BROKEN_VENT) {
-            rooms.get(id).totalVents++;
-          }
-        }
-      }
-    }
-    this.rooms = Array.from(rooms.values());*/
   }
   isTileActionable(x, y) {
     return [TILE_FARM, TILE_CARROT, TILE_BROKEN_VENT].includes(this.getTileAt(x, y));
@@ -536,27 +439,6 @@ class Player {
     if(inMold) {
       this.health.increment(-5 * delta / 1000);
     }
-
-    /*let room = null;
-
-    for(let i of this.map.rooms) {
-      if(i.contains(this.sprite.getBounds())) {
-        room = i;
-        break;
-      }
-    }
-
-    let factor = null;
-
-    if(room === null) {
-      factor = -1;
-    } else if(room.workingVents === room.totalVents) {
-      factor = 3;
-    } else {
-      factor = room.workingVents / room.totalVents - 1;
-    }
-
-    this.oxygen.increment(delta / 1000 * factor);*/
 
     let change = null;
 
@@ -682,15 +564,6 @@ const HEALTH_MAX_LEVEL = 100;
 class Hud {
   constructor(scene, player) {
     this.camera = scene.cameras.add(0, 0, scene.cameras.main.width, scene.cameras.main.height);
-
-    /*this.oxygenBar = new BarDisplay({
-      scene,
-      camera: this.camera,
-      x: 10,
-      y: 10,
-      color: 0x0000FF,
-      stat: player.oxygen
-    });*/
 
     this.healthBar = new BarDisplay({
       scene,

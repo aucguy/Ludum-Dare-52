@@ -24,28 +24,3 @@ export function inCircle (centerX, centerY) {
   }
   return result
 }
-
-export class Scheduler {
-  constructor () {
-    this.events = []
-    this.time = null
-  }
-
-  addEvent (delay, type, data) {
-    this.events.push({
-      time: this.time + delay,
-      type,
-      data
-    })
-    this.events.sort((a, b) => a.time - b.time)
-  }
-
-  update (time) {
-    this.time = time
-    let index = 0
-    while (index < this.events.length && this.events[index].time <= time) {
-      index++
-    }
-    return this.events.splice(0, index)
-  }
-}

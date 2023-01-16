@@ -4,3 +4,4 @@ backup/
 jshint-output.html
 lib/
 .project
+dist

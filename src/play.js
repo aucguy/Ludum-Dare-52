@@ -79,6 +79,12 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.setZoom(2)
     this.turns = 0
     this.events = new Map()
+
+    for(let x = 0; x < this.map.getWidth(); x++) {
+      for(let y = 0; y < this.map.getHeight(); y++) {
+        this.harvest(x, y);
+      }
+    }
   }
 
   update (time, delta) {
@@ -206,12 +212,10 @@ export class PlayScene extends Phaser.Scene {
 
 class GameMap {
   constructor (scene, camera) {
-    const map = scene.make.tilemap({ key: 'map' })
-    const tileset = map.addTilesetImage('tileset')
-    this.layer = map.createLayer('ground', tileset, 0, 0)
+    this.map = scene.make.tilemap({ key: 'map' })
+    const tileset = this.map.addTilesetImage('tileset')
+    this.layer = this.map.createLayer('ground', tileset, 0, 0)
     setCamera(camera, this.layer)
-    this.events = new Map()
-    this.time = 0
   }
 
   getTileAt (x, y) {
@@ -225,6 +229,14 @@ class GameMap {
 
   putTileAt (index, x, y) {
     this.layer.putTileAt(index, x, y)
+  }
+
+  getWidth() {
+    return this.map.width
+  }
+
+  getHeight() {
+    return this.map.height
   }
 }
 

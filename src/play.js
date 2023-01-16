@@ -13,8 +13,8 @@ const PLANT_GROWTH_TIME_MAX = 20
 const MOLD_GROW_TIME = 5
 const MOLD_START_CHANCE = 0.1
 const ANGER_DELAY = 10
-const EXPLOSION_DELAY = 10
 const ANGER_CHANCE = 0.1
+const EXPLOSION_DELAY = 20
 const EXPLOSION_DAMAGE = 5
 
 const TILE_VOID = -1
@@ -51,6 +51,7 @@ export class PlayScene extends Phaser.Scene {
     this.player = null
     this.hud = null
     this.turns = 0
+    this.events = null
   }
 
   create () {
@@ -77,6 +78,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.cameras.main.setZoom(2)
     this.turns = 0
+    this.events = new Map()
   }
 
   update (time, delta) {
@@ -97,71 +99,110 @@ export class PlayScene extends Phaser.Scene {
 
   turn () {
     this.turns++
-    for (const event of this.map.update(this.turns)) {
+    for (const event of this.getTriggeredEvents(this.turns)) {
       const tileX = event.x
       const tileY = event.y
       if (event.name === 'grow') {
-        if (MOLD_START_CHANCE > Math.random()) {
-          this.map.putTileAt(TILE_MOLD, tileX, tileY)
-          this.map.addEvent('mold', tileX, tileY, MOLD_GROW_TIME)
-        } else if (this.map.getTileAt(tileX, tileY) === TILE_PLANT) {
-          this.map.putTileAt(TILE_CARROT, tileX, tileY)
-          if (ANGER_CHANCE > Math.random()) {
-            this.map.addEvent('anger', tileX, tileY, ANGER_DELAY)
-          }
-        }
+        this.grow(tileX, tileY);
       } else if (event.name === 'anger') {
-        this.map.putTileAt(TILE_ANGER, tileX, tileY)
-        this.map.addEvent('explosion', tileX, tileY, EXPLOSION_DELAY)
+        this.anger(tileX, tileY);
       } else if (event.name === 'explosion') {
         this.player.health.increment(-EXPLOSION_DAMAGE)
         for (const [circleX, circleY] of inCircle(tileX * TILE_WIDTH, tileY * TILE_HEIGHT)) {
-          const tile = this.map.getTileAt(circleX, circleY)
-          if (tile === TILE_CARROT || tile === TILE_ANGER || tile === TILE_MOLD) {
-            this.map.putTileAt(TILE_FARM, circleX, circleY)
-            this.map.removeEvent(circleX, circleY)
-          }
-        }
-      } else if (event.name === 'mold') {
-        for (const neighbor of NEIGHBORS) {
-          const neighborX = tileX + neighbor[0]
-          const neighborY = tileY + neighbor[0]
-          const tile = this.map.getTileAt(neighborX, neighborY)
-          if (tile === TILE_PLANT || tile === TILE_CARROT) {
-            this.map.putTileAt(TILE_MOLD, neighborX, neighborY)
-            this.map.addEvent('mold', neighborX, neighborY, MOLD_GROW_TIME)
-          }
+          this.explode(circleX, circleY);
         }
       }
     }
 
-    this.harvest()
+    for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
+      this.harvest(tileX, tileY);
+    }
   }
 
-  harvest () {
-    for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
-      const tile = this.map.getTileAt(tileX, tileY)
-      if (tile === TILE_CARROT || tile === TILE_FARM || tile === TILE_MOLD || tile === TILE_ANGER) {
-        this.map.putTileAt(TILE_PLANT, tileX, tileY)
-      }
-      if (tile === TILE_CARROT) {
+  harvest(x, y) {
+    const tile = this.map.getTileAt(x, y);
+    if(tile === TILE_FARM || tile === TILE_ANGER || tile === TILE_CARROT) {
+      this.map.putTileAt(TILE_PLANT, x, y);
+      if(tile === TILE_CARROT) {
         this.player.food.increment(1)
-      } else if (tile === TILE_FARM) {
+      }
+      if(this.getEventName !== 'grow') {
         const delay = Math.round(PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN))
-        if (this.map.getEventName(tileX, tileY) !== 'grow') {
-          this.map.addEvent('grow', tileX, tileY, delay)
-        }
+        this.addEvent('grow', x, y, delay)
       }
     }
+  }
+
+  grow(x, y) {
+    const tile = this.map.getTileAt(x, y);
+    if(tile !== TILE_PLANT) {
+      console.warn('attempt to grow a non plant')
+      return;
+    }
+
+    if(ANGER_CHANCE > Math.random()) {
+      this.map.putTileAt(TILE_ANGER, x, y);
+      this.addEvent('explosion', x, y, EXPLOSION_DELAY);
+    } else {
+      this.map.putTileAt(TILE_CARROT, x, y);
+      if(this.hasEvent(x, y)) {
+        console.warn('event still exists')
+      }
+      this.removeEvent(x, y); //unnecessary, just in case
+    }
+  }
+
+  explode(x, y) {
+    const tile = this.map.getTileAt(x, y);
+    if(tile === TILE_PLANT || tile === TILE_CARROT || tile === TILE_ANGER) {
+      this.map.putTileAt(TILE_FARM, x, y);
+      if(this.hasEvent(x, y)) {
+        console.warn('event still exists')
+      }
+      this.removeEvent(x, y) //unnecessary, just in case
+    }
+  }
+
+  addEvent (name, x, y, delay) {
+    this.events.set(x + ',' + y, {
+      name,
+      time: this.turns + delay,
+      x,
+      y
+    })
+  }
+
+  removeEvent (x, y) {
+    this.events.delete(x + ',' + y)
+  }
+
+  hasEvent(x, y) {
+    return this.events.has(x + ',' + y)
+  }
+
+  getEventName (x, y) {
+    if (this.events.has(x + ',' + y)) {
+      return this.events.get(x + ',' + y).name
+    } else {
+      return null
+    }
+  }
+
+  getTriggeredEvents () {
+    const toDelete = []
+    const triggered = []
+    for (const [key, event] of this.events.entries()) {
+      if (this.turns >= event.time) {
+        toDelete.push(key)
+        triggered.push(event)
+      }
+    }
+    for (const key of toDelete) {
+      this.events.delete(key)
+    }
+    return triggered
   }
 }
-
-const NEIGHBORS = [
-  [-1, 0],
-  [1, 0],
-  [0, -1],
-  [0, 1]
-]
 
 class GameMap {
   constructor (scene, camera) {
@@ -184,43 +225,6 @@ class GameMap {
 
   putTileAt (index, x, y) {
     this.layer.putTileAt(index, x, y)
-  }
-
-  addEvent (name, x, y, delay) {
-    this.events.set(x + ',' + y, {
-      name,
-      time: this.time + delay,
-      x,
-      y
-    })
-  }
-
-  removeEvent (x, y) {
-    this.events.delete(x + ',' + y)
-  }
-
-  getEventName (x, y) {
-    if (this.events.has(x + ',' + y)) {
-      return this.events.get(x + ',' + y).name
-    } else {
-      return null
-    }
-  }
-
-  update (time) {
-    this.time = time
-    const toDelete = []
-    const triggered = []
-    for (const [key, event] of this.events.entries()) {
-      if (this.time >= event.time) {
-        toDelete.push(key)
-        triggered.push(event)
-      }
-    }
-    for (const key of toDelete) {
-      this.events.delete(key)
-    }
-    return triggered
   }
 }
 

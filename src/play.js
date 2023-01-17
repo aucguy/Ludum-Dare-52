@@ -10,12 +10,10 @@ const HEALTH_MAX_LEVEL = 100
 
 const PLANT_GROWTH_TIME_MIN = 10
 const PLANT_GROWTH_TIME_MAX = 20
-const MOLD_GROW_TIME = 5
-const MOLD_START_CHANCE = 0.1
-const ANGER_DELAY = 10
-const ANGER_CHANCE = 0.1
-const EXPLOSION_DELAY = 20
-const EXPLOSION_DAMAGE = 5
+const ANGER_CHANCE = 0.3
+const EXPLOSION_DELAY = 15
+const EXPLOSION_DAMAGE = 20
+const MAX_ANGER = 5
 
 const TILE_VOID = -1
 // const TILE_EMPTY = 0
@@ -32,7 +30,7 @@ const TILE_BOTTOMLEFT_WALL = 10
 const TILE_BOTTOMRIGHT_WALL = 11
 const TILE_WORKING_VENT = 12
 const TILE_BROKEN_VENT = 13
-const TILE_MOLD = 14
+// const TILE_MOLD = 14
 
 const SOLID_TILES = [
   TILE_VOID, TILE_ROCK,
@@ -71,18 +69,20 @@ export class PlayScene extends Phaser.Scene {
       camera: this.cameras.main,
       keyboard: this.keyboard,
       map: this.map,
-      x: 2,
-      y: 2
+      x: 5,
+      y: 3
     })
     this.hud = new Hud(this, this.player)
 
-    this.cameras.main.setZoom(2)
+    this.cameras.main.scrollX -= 8 * this.map.getWidth();
+    this.cameras.main.scrollY -= 8 * (this.map.getHeight() + 0.5);
+    this.cameras.main.setZoom(4)
     this.turns = 0
     this.events = new Map()
 
-    for(let x = 0; x < this.map.getWidth(); x++) {
-      for(let y = 0; y < this.map.getHeight(); y++) {
-        this.harvest(x, y);
+    for (let x = 0; x < this.map.getWidth(); x++) {
+      for (let y = 0; y < this.map.getHeight(); y++) {
+        this.harvest(x, y)
       }
     }
   }
@@ -109,63 +109,82 @@ export class PlayScene extends Phaser.Scene {
       const tileX = event.x
       const tileY = event.y
       if (event.name === 'grow') {
-        this.grow(tileX, tileY);
+        this.grow(tileX, tileY)
       } else if (event.name === 'anger') {
-        this.anger(tileX, tileY);
+        this.anger(tileX, tileY)
       } else if (event.name === 'explosion') {
         this.player.health.increment(-EXPLOSION_DAMAGE)
         for (const [circleX, circleY] of inCircle(tileX * TILE_WIDTH, tileY * TILE_HEIGHT)) {
-          this.explode(circleX, circleY);
+          this.explode(circleX, circleY)
         }
       }
     }
 
-    for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
-      this.harvest(tileX, tileY);
+    this.harvest(this.player.x, this.player.y)
+    /*for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
+      this.harvest(tileX, tileY)
+    }*/
+
+    if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
+      const x = Math.round(Math.random() * this.map.getWidth())
+      const y = Math.round(Math.random() * this.map.getHeight())
+      if(this.map.getTileAt(x, y) === TILE_CARROT) {
+        this.anger(x, y)
+      }
     }
   }
 
-  harvest(x, y) {
-    const tile = this.map.getTileAt(x, y);
-    if(tile === TILE_FARM || tile === TILE_ANGER || tile === TILE_CARROT) {
-      this.map.putTileAt(TILE_PLANT, x, y);
-      if(tile === TILE_CARROT) {
+  harvest (x, y) {
+    const tile = this.map.getTileAt(x, y)
+    if (tile === TILE_FARM || tile === TILE_ANGER || tile === TILE_CARROT) {
+      this.map.putTileAt(TILE_PLANT, x, y)
+      if (tile === TILE_CARROT) {
         this.player.food.increment(1)
       }
-      if(this.getEventName !== 'grow') {
+      if (this.getEventName !== 'grow') {
         const delay = Math.round(PLANT_GROWTH_TIME_MIN + Math.random() * (PLANT_GROWTH_TIME_MAX - PLANT_GROWTH_TIME_MIN))
         this.addEvent('grow', x, y, delay)
       }
     }
   }
 
-  grow(x, y) {
-    const tile = this.map.getTileAt(x, y);
-    if(tile !== TILE_PLANT) {
+  grow (x, y) {
+    const tile = this.map.getTileAt(x, y)
+    if (tile !== TILE_PLANT) {
       console.warn('attempt to grow a non plant')
-      return;
+      return
     }
 
-    if(ANGER_CHANCE > Math.random()) {
-      this.map.putTileAt(TILE_ANGER, x, y);
-      this.addEvent('explosion', x, y, EXPLOSION_DELAY);
-    } else {
-      this.map.putTileAt(TILE_CARROT, x, y);
-      if(this.hasEvent(x, y)) {
-        console.warn('event still exists')
-      }
-      this.removeEvent(x, y); //unnecessary, just in case
+    /*if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
+      this.map.putTileAt(TILE_ANGER, x, y)
+      this.addEvent('explosion', x, y, EXPLOSION_DELAY)
+    } else {*/
+    this.map.putTileAt(TILE_CARROT, x, y)
+    if (this.hasEvent(x, y)) {
+      console.warn('event still exists')
     }
+    this.removeEvent(x, y) // unnecessary, just in case
+    //}
   }
 
-  explode(x, y) {
-    const tile = this.map.getTileAt(x, y);
-    if(tile === TILE_PLANT || tile === TILE_CARROT || tile === TILE_ANGER) {
-      this.map.putTileAt(TILE_FARM, x, y);
-      if(this.hasEvent(x, y)) {
+  anger(x, y) {
+    if(this.map.getTileAt(x, y) !== TILE_CARROT) {
+      console.warn('attempt to anger a non carrot')
+      return
+    }
+
+    this.map.putTileAt(TILE_ANGER, x, y)
+    this.addEvent('explosion', x, y, EXPLOSION_DELAY)
+  }
+
+  explode (x, y) {
+    const tile = this.map.getTileAt(x, y)
+    if (tile === TILE_PLANT || tile === TILE_CARROT || tile === TILE_ANGER) {
+      this.map.putTileAt(TILE_FARM, x, y)
+      if (this.hasEvent(x, y)) {
         console.warn('event still exists')
       }
-      this.removeEvent(x, y) //unnecessary, just in case
+      this.removeEvent(x, y) // unnecessary, just in case
     }
   }
 
@@ -182,7 +201,7 @@ export class PlayScene extends Phaser.Scene {
     this.events.delete(x + ',' + y)
   }
 
-  hasEvent(x, y) {
+  hasEvent (x, y) {
     return this.events.has(x + ',' + y)
   }
 
@@ -215,7 +234,9 @@ class GameMap {
     this.map = scene.make.tilemap({ key: 'map' })
     const tileset = this.map.addTilesetImage('tileset')
     this.layer = this.map.createLayer('ground', tileset, 0, 0)
+    this.layer.setOrigin(0)
     setCamera(camera, this.layer)
+    this.numAnger = 0
   }
 
   getTileAt (x, y) {
@@ -228,14 +249,20 @@ class GameMap {
   }
 
   putTileAt (index, x, y) {
+    if(this.getTileAt(x, y) === TILE_ANGER) {
+      this.numAnger--
+    }
+    if(index === TILE_ANGER) {
+      this.numAnger++
+    }
     this.layer.putTileAt(index, x, y)
   }
 
-  getWidth() {
+  getWidth () {
     return this.map.width
   }
 
-  getHeight() {
+  getHeight () {
     return this.map.height
   }
 }

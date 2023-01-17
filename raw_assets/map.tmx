@@ -1,28 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.9" tiledversion="1.9.2" orientation="orthogonal" renderorder="right-down" width="20" height="15" tilewidth="16" tileheight="16" infinite="0" nextlayerid="2" nextobjectid="1">
+<map version="1.9" tiledversion="1.9.2" orientation="orthogonal" renderorder="right-down" width="10" height="7" tilewidth="16" tileheight="16" infinite="0" nextlayerid="2" nextobjectid="1">
  <editorsettings>
   <export target="../assets/map.json" format="json"/>
  </editorsettings>
  <tileset firstgid="1" name="tileset" tilewidth="16" tileheight="16" tilecount="16" columns="4">
-  <image source="../assets/image/tileset.png" width="64" height="64"/>
+  <image source="../../LD52/Ludum-Dare-52/assets/image/tileset.png" width="64" height="64"/>
  </tileset>
- <layer id="1" name="ground" width="20" height="15">
+ <layer id="1" name="ground" width="10" height="7">
   <data encoding="csv">
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,6,6,6,2,2,2,2,6,2,2,2,2,
-2,2,2,2,6,2,2,2,2,2,2,2,2,2,2,6,6,2,2,2,
-2,2,2,2,6,6,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,6,6,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,6,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,6,6,2,2,2,2,2,
-2,2,2,2,6,6,2,2,2,2,2,2,2,2,2,2,2,6,2,2,
-2,2,2,2,2,2,2,2,6,6,2,2,2,2,2,2,2,6,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,6,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,6,6,6,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2
+2,2,2,2,2,2,2,2,2,2,
+2,2,2,2,2,2,6,2,2,2,
+2,2,6,2,2,2,2,2,6,6,
+2,2,2,2,6,2,2,2,2,2,
+2,2,2,2,2,2,6,2,2,2,
+2,2,6,2,2,2,2,2,2,2,
+2,2,2,2,2,2,2,2,2,6
 </data>
  </layer>
 </map>

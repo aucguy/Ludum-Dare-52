@@ -34,8 +34,8 @@ class ItemDisplay {
     setCamera(camera, outline)
     outline.setOrigin(0)
 
-    const iconSprite = scene.add.image(x + 32, y + 4, icon)
-    iconSprite.scale = 2
+    const iconSprite = scene.add.image(x + 16, y + 4, icon)
+    iconSprite.scale = 4
     setCamera(camera, iconSprite)
     iconSprite.setOrigin(0)
 

@@ -74,7 +74,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('carrot', 'assets/image/carrot.png')
     this.load.image('selection', 'assets/image/selection.png')
     this.load.tilemapTiledJSON('map', 'assets/map.json')
-    this.load.bitmapFont('font', 'assets/image/digit.png', 'assets/font.xml')
+    this.load.bitmapFont('font', 'assets/image/font.png', 'assets/font.xml')
   }
 
   update () {

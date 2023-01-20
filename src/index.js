@@ -48,7 +48,7 @@ function init () {
 
   game = new Phaser.Game({
     width: 640,
-    height: 480,
+    height: 512,
     parent: 'gameContainer',
     scene: new BootScene(),
     physics: {
@@ -73,8 +73,29 @@ class BootScene extends Phaser.Scene {
     this.load.image('tileset', 'assets/image/tileset.png')
     this.load.image('carrot', 'assets/image/carrot.png')
     this.load.image('selection', 'assets/image/selection.png')
+    this.load.image('hudBackground', 'assets/image/hudBackground.png')
+    this.load.spritesheet('heart', 'assets/image/heart.png', {
+      frameWidth: 18,
+      frameHeight: 18
+    })
     this.load.tilemapTiledJSON('map', 'assets/map.json')
     this.load.bitmapFont('font', 'assets/image/font.png', 'assets/font.xml')
+  }
+
+  create () {
+    this.anims.create({
+      key: 'full',
+      frames: this.anims.generateFrameNumbers('heart', {
+        frames: [0]
+      })
+    })
+
+    this.anims.create({
+      key: 'empty',
+      frames: this.anims.generateFrameNumbers('heart', {
+        frames: [1]
+      })
+    })
   }
 
   update () {

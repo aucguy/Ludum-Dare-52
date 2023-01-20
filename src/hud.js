@@ -1,27 +1,28 @@
-import { setCamera } from './util.js'
-
-const BAR_HEIGHT = 20
-const BAR_BACKGROUND_COLOR = 0xFFFFFF
-const BAR_OUTLINE_WIDTH = 3
-const BAR_OUTLINE_COLOR = 0x000000
+import { setCamera, TILE_HEIGHT } from './util.js'
 
 class BarDisplay {
   constructor (args) {
-    const { scene, camera, x, y, color, stat } = args
+    const { scene, camera, x, y, stat } = args
     this.stat = stat
 
-    const outline = scene.add.rectangle(x, y, this.stat.max, BAR_HEIGHT, BAR_BACKGROUND_COLOR)
-    setCamera(camera, outline)
-    outline.setOrigin(0)
-    outline.setStrokeStyle(BAR_OUTLINE_WIDTH, BAR_OUTLINE_COLOR)
-
-    this.bar = scene.add.rectangle(x, y, this.stat.level, BAR_HEIGHT, color)
-    setCamera(camera, this.bar)
-    this.bar.setOrigin(0)
+    this.sprites = []
+    for (let i = 0; i < this.stat.max; i++) {
+      const sprite = scene.add.sprite(0, y, 'heart')
+      sprite.scale = 2
+      sprite.x = x + i * (2 + sprite.displayWidth)
+      setCamera(camera, sprite)
+      this.sprites.push(sprite)
+    }
   }
 
   update () {
-    this.bar.width = this.stat.level
+    for (let i = 0; i < this.stat.max; i++) {
+      if (i < this.stat.level) {
+        this.sprites[i].play('full')
+      } else {
+        this.sprites[i].play('empty')
+      }
+    }
   }
 }
 
@@ -30,18 +31,18 @@ class ItemDisplay {
     const { scene, camera, x, y, stat, icon } = args
     this.stat = stat
 
-    const outline = scene.add.rectangle(x, y, 64, 40, 0x808080)
-    setCamera(camera, outline)
-    outline.setOrigin(0)
-
-    const iconSprite = scene.add.image(x + 16, y + 4, icon)
-    iconSprite.scale = 4
+    const iconSprite = scene.add.image(x, y, icon)
+    iconSprite.scale = 2
     setCamera(camera, iconSprite)
-    iconSprite.setOrigin(0)
 
-    this.digit = scene.add.bitmapText(x, y + 4, 'font', this.stat.level + '', 32)
+    this.digit = scene.add.bitmapText(
+      x + iconSprite.displayWidth,
+      y - Math.round(iconSprite.displayHeight / 4),
+      'font',
+      this.stat.level + '',
+      32
+    )
     setCamera(camera, this.digit)
-    this.digit.setOrigin(0)
   }
 
   update () {
@@ -53,20 +54,28 @@ export class Hud {
   constructor (scene, player) {
     this.camera = scene.cameras.add(0, 0, scene.cameras.main.width, scene.cameras.main.height)
 
+    const background = scene.add.image(0, 16 * 7 * 4, 'hudBackground')
+    background.scale = 4
+    background.setOrigin(0)
+
+    const height = this.camera.height
+    const mapHeight = scene.map.getHeight()
+    const zoom = scene.cameras.main.zoom
+    const y = height - (height - TILE_HEIGHT * mapHeight * zoom) / 2
+
     this.healthBar = new BarDisplay({
       scene,
       camera: this.camera,
-      x: 10,
-      y: 10,
-      color: 0xFF0000,
+      x: 32,
+      y,
       stat: player.health
     })
 
     this.foodDisplay = new ItemDisplay({
       scene,
       camera: this.camera,
-      x: 560,
-      y: 20,
+      x: this.camera.width / 2,
+      y,
       icon: 'carrot',
       stat: player.food
     })

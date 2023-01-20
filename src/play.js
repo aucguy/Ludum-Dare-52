@@ -6,31 +6,14 @@ const MOVE_LEFT = Phaser.Input.Keyboard.KeyCodes.A
 const MOVE_DOWN = Phaser.Input.Keyboard.KeyCodes.S
 const MOVE_RIGHT = Phaser.Input.Keyboard.KeyCodes.D
 
-const HEALTH_MAX_LEVEL = 100
+const HEALTH_MAX_LEVEL = 5
 
 const PLANT_GROWTH_TIME_MIN = 10
 const PLANT_GROWTH_TIME_MAX = 20
 const ANGER_CHANCE = 0.3
 const EXPLOSION_DELAY = 15
-const EXPLOSION_DAMAGE = 20
+const EXPLOSION_DAMAGE = 1
 const MAX_ANGER = 5
-
-/*const TILE_VOID = -1
-// const TILE_EMPTY = 0
-// const TILE_GROUND = 1
-const TILE_FARM = 2
-const TILE_PLANT = 3
-// const TILE_FLOOR = 4
-const TILE_CARROT = 5
-const TILE_ROCK = 6
-const TILE_ANGER = 7
-// const TILE_ANGER_WARNING = 8
-const TILE_TOPRIGHT_WALL = 9
-const TILE_BOTTOMLEFT_WALL = 10
-const TILE_BOTTOMRIGHT_WALL = 11
-const TILE_WORKING_VENT = 12
-const TILE_BROKEN_VENT = 13
-// const TILE_MOLD = 14*/
 
 const TILE_VOID = -1
 const TILE_FARM = 1
@@ -40,9 +23,7 @@ const TILE_CARROT = 4
 const TILE_ANGER = 5
 
 const SOLID_TILES = [
-  TILE_VOID, TILE_ROCK,
-  //TILE_TOPRIGHT_WALL, TILE_BOTTOMLEFT_WALL, TILE_BOTTOMRIGHT_WALL,
-  //TILE_WORKING_VENT, TILE_BROKEN_VENT
+  TILE_VOID, TILE_ROCK
 ]
 
 function isSolid (tile) {
@@ -62,6 +43,7 @@ export class PlayScene extends Phaser.Scene {
   create () {
     this.cameras.main.centerOn(20 / 2 * TILE_WIDTH, 15 / 2 * TILE_HEIGHT)
     this.physics.world.setBounds(0, 0, 20 * TILE_WIDTH, 15 * TILE_HEIGHT)
+    this.cameras.main.setZoom(4)
 
     this.keyboard = new Keyboard(this, [
       MOVE_UP,
@@ -81,9 +63,8 @@ export class PlayScene extends Phaser.Scene {
     })
     this.hud = new Hud(this, this.player)
 
-    this.cameras.main.scrollX -= 8 * this.map.getWidth();
-    this.cameras.main.scrollY -= 8 * (this.map.getHeight() + 0.5);
-    this.cameras.main.setZoom(4)
+    this.cameras.main.scrollX -= TILE_WIDTH / 2 * this.map.getWidth()
+    this.cameras.main.scrollY -= TILE_HEIGHT / 2 * (this.map.getHeight())
     this.turns = 0
     this.events = new Map()
 
@@ -128,14 +109,14 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.harvest(this.player.x, this.player.y)
-    /*for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
+    /* for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
       this.harvest(tileX, tileY)
-    }*/
+    } */
 
     if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
       const x = Math.round(Math.random() * this.map.getWidth())
       const y = Math.round(Math.random() * this.map.getHeight())
-      if(this.map.getTileAt(x, y) === TILE_CARROT) {
+      if (this.map.getTileAt(x, y) === TILE_CARROT) {
         this.anger(x, y)
       }
     }
@@ -162,20 +143,20 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    /*if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
+    /* if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
       this.map.putTileAt(TILE_ANGER, x, y)
       this.addEvent('explosion', x, y, EXPLOSION_DELAY)
-    } else {*/
+    } else { */
     this.map.putTileAt(TILE_CARROT, x, y)
     if (this.hasEvent(x, y)) {
       console.warn('event still exists')
     }
     this.removeEvent(x, y) // unnecessary, just in case
-    //}
+    // }
   }
 
-  anger(x, y) {
-    if(this.map.getTileAt(x, y) !== TILE_CARROT) {
+  anger (x, y) {
+    if (this.map.getTileAt(x, y) !== TILE_CARROT) {
       console.warn('attempt to anger a non carrot')
       return
     }
@@ -241,7 +222,7 @@ class GameMap {
     this.map = scene.make.tilemap({ key: 'map' })
     const tileset = this.map.addTilesetImage('tileset')
     this.layer = this.map.createLayer('ground', tileset, 0, 0)
-    this.layer.setOrigin(0)
+    // this.layer.setOrigin(0)
     setCamera(camera, this.layer)
     this.numAnger = 0
   }
@@ -256,10 +237,10 @@ class GameMap {
   }
 
   putTileAt (index, x, y) {
-    if(this.getTileAt(x, y) === TILE_ANGER) {
+    if (this.getTileAt(x, y) === TILE_ANGER) {
       this.numAnger--
     }
-    if(index === TILE_ANGER) {
+    if (index === TILE_ANGER) {
       this.numAnger++
     }
     this.layer.putTileAt(index, x, y)

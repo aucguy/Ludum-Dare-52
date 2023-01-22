@@ -75,6 +75,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('selection', 'assets/image/selection.png')
     this.load.image('hudBackground', 'assets/image/hudBackground.png')
     this.load.image('button', 'assets/image/button.png')
+    this.load.image('background', 'assets/image/background.png')
     this.load.spritesheet('heart', 'assets/image/heart.png', {
       frameWidth: 18,
       frameHeight: 18

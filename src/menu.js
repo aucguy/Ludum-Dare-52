@@ -2,6 +2,16 @@ export class MainMenu extends Phaser.Scene {
   create () {
     const width = this.cameras.main.width
     const height = this.cameras.main.height
+    const backgroundImage = this.add.image(width / 2, height / 2, 'background')
+    backgroundImage.scale = 1 / 2
+    this.add.rectangle(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      0x000000,
+      0.5
+    )
     button(this, 'Play!', width / 2, height / 2, 'play')
   }
 }

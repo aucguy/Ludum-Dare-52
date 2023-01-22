@@ -83,6 +83,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.player.moved) {
       this.turn()
+      this.sound.play('move')
     }
 
     this.keyboard.update()
@@ -90,6 +91,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.player.health.isDepleted() && this.explosions === 0) {
       this.game.scene.pause(this)
       this.game.scene.start('lose', { score: this.player.food.level })
+      this.sound.play('lose')
     }
   }
 
@@ -120,6 +122,7 @@ export class PlayScene extends Phaser.Scene {
           () => this.explosionDone(explosion)
         )
         this.explosions++
+        this.sound.play('explosion')
       }
     }
 
@@ -260,6 +263,7 @@ class GameMap {
       steam.play('steam')
       setCamera(this.scene.cameras.main, steam)
       this.steam.set(`${x},${y}`, steam)
+      this.scene.sound.play('angry')
     } else if (this.steam.has(`${x},${y}`)) {
       this.steam.get(`${x},${y}`).destroy()
     }

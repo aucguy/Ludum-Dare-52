@@ -89,6 +89,10 @@ class BootScene extends Phaser.Scene {
     })
     this.load.tilemapTiledJSON('map', 'assets/map.json')
     this.load.bitmapFont('font', 'assets/image/font.png', 'assets/font.xml')
+    this.load.audio('explosion', 'assets/audio/explosion.wav')
+    this.load.audio('angry', 'assets/audio/angry.wav')
+    this.load.audio('move', 'assets/audio/move.wav')
+    this.load.audio('lose', 'assets/audio/lose.wav')
   }
 
   create () {

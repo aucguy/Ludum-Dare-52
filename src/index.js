@@ -78,6 +78,14 @@ class BootScene extends Phaser.Scene {
       frameWidth: 18,
       frameHeight: 18
     })
+    this.load.spritesheet('steam', 'assets/image/steam.png', {
+      frameWidth: 16,
+      frameHeight: 16
+    })
+    this.load.spritesheet('explosion', 'assets/image/explosion.png', {
+      frameWidth: 48,
+      frameHeight: 48
+    })
     this.load.tilemapTiledJSON('map', 'assets/map.json')
     this.load.bitmapFont('font', 'assets/image/font.png', 'assets/font.xml')
   }
@@ -95,6 +103,26 @@ class BootScene extends Phaser.Scene {
       frames: this.anims.generateFrameNumbers('heart', {
         frames: [1]
       })
+    })
+
+    this.anims.create({
+      key: 'steam',
+      frames: this.anims.generateFrameNumbers('steam', {
+        start: 0,
+        end: 5,
+      }),
+      frameRate: 12,
+      repeat: -1
+    })
+    
+    this.anims.create({
+      key: 'explosion',
+      frames: this.anims.generateFrameNames('explosion', {
+        start: 0,
+        end: 2
+      }),
+      frameRate: 4,
+      repeat: 0
     })
   }
 

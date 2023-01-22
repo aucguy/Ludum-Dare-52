@@ -105,13 +105,23 @@ export class PlayScene extends Phaser.Scene {
         for (const [circleX, circleY] of inCircle(tileX * TILE_WIDTH, tileY * TILE_HEIGHT)) {
           this.explode(circleX, circleY)
         }
+
+        const explosion = this.add.sprite(
+          (tileX + 0.5) * TILE_WIDTH,
+          (tileY + 0.5) * TILE_HEIGHT,
+          'explosion'
+        )
+        setCamera(this.cameras.main, explosion)
+        explosion.play('explosion')
+        explosion.on(
+          Phaser.Animations.Events.ANIMATION_COMPLETE,
+          explosion.destroy,
+          explosion
+        )
       }
     }
 
     this.harvest(this.player.x, this.player.y)
-    /* for (const [tileX, tileY] of inCircle(this.player.sprite.x, this.player.sprite.y)) {
-      this.harvest(tileX, tileY)
-    } */
 
     if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
       const x = Math.round(Math.random() * this.map.getWidth())
@@ -143,16 +153,11 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    /* if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
-      this.map.putTileAt(TILE_ANGER, x, y)
-      this.addEvent('explosion', x, y, EXPLOSION_DELAY)
-    } else { */
     this.map.putTileAt(TILE_CARROT, x, y)
     if (this.hasEvent(x, y)) {
       console.warn('event still exists')
     }
     this.removeEvent(x, y) // unnecessary, just in case
-    // }
   }
 
   anger (x, y) {
@@ -219,12 +224,13 @@ export class PlayScene extends Phaser.Scene {
 
 class GameMap {
   constructor (scene, camera) {
+    this.scene = scene
     this.map = scene.make.tilemap({ key: 'map' })
     const tileset = this.map.addTilesetImage('tileset')
     this.layer = this.map.createLayer('ground', tileset, 0, 0)
-    // this.layer.setOrigin(0)
     setCamera(camera, this.layer)
     this.numAnger = 0
+    this.steam = new Map()
   }
 
   getTileAt (x, y) {
@@ -242,6 +248,13 @@ class GameMap {
     }
     if (index === TILE_ANGER) {
       this.numAnger++
+
+      const steam = this.scene.add.sprite((x + 0.5) * TILE_WIDTH, y * TILE_HEIGHT, 'steam')
+      steam.play('steam')
+      setCamera(this.scene.cameras.main, steam)
+      this.steam.set(`${x},${y}`, steam)
+    } else if(this.steam.has(`${x},${y}`)) {
+      this.steam.get(`${x},${y}`).destroy()
     }
     this.layer.putTileAt(index, x, y)
   }

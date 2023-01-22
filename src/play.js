@@ -97,6 +97,9 @@ export class PlayScene extends Phaser.Scene {
 
   turn () {
     this.turns++
+
+    this.harvest(this.player.x, this.player.y)
+
     for (const event of this.getTriggeredEvents(this.turns)) {
       const tileX = event.x
       const tileY = event.y
@@ -125,8 +128,6 @@ export class PlayScene extends Phaser.Scene {
         this.sound.play('explosion')
       }
     }
-
-    this.harvest(this.player.x, this.player.y)
 
     if (this.map.numAnger < MAX_ANGER && ANGER_CHANCE > Math.random()) {
       const x = Math.round(Math.random() * this.map.getWidth())

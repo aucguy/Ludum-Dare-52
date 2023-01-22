@@ -74,6 +74,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('carrot', 'assets/image/carrot.png')
     this.load.image('selection', 'assets/image/selection.png')
     this.load.image('hudBackground', 'assets/image/hudBackground.png')
+    this.load.image('button', 'assets/image/button.png')
     this.load.spritesheet('heart', 'assets/image/heart.png', {
       frameWidth: 18,
       frameHeight: 18
@@ -109,12 +110,12 @@ class BootScene extends Phaser.Scene {
       key: 'steam',
       frames: this.anims.generateFrameNumbers('steam', {
         start: 0,
-        end: 5,
+        end: 5
       }),
       frameRate: 12,
       repeat: -1
     })
-    
+
     this.anims.create({
       key: 'explosion',
       frames: this.anims.generateFrameNames('explosion', {

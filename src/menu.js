@@ -1,21 +1,37 @@
 export class MainMenu extends Phaser.Scene {
   create () {
-    button(this, 'Play!', 320, 240, 'play')
+    const width = this.cameras.main.width
+    const height = this.cameras.main.height
+    button(this, 'Play!', width / 2, height / 2, 'play')
   }
 }
 
 export class LoseScene extends Phaser.Scene {
-  create () {
-    button(this, 'You Lost!', 320, 240, null)
-    button(this, 'Score: ' + 0, 320, 300, null)
-    button(this, 'Play Again!', 320, 360, 'play')
+  create (config) {
+    const width = this.cameras.main.width
+    const height = this.cameras.main.height
+    const spacing = 80
+
+    const background = this.add.rectangle(
+      0,
+      0,
+      width,
+      height,
+      0x000000,
+      0.5
+    )
+    background.setOrigin(0)
+    button(this, 'You Lost!', width / 2, height / 2 - spacing, null)
+    button(this, 'Score: ' + config.score, width / 2, height / 2, null)
+    button(this, 'Play Again!', width / 2, height / 2 + spacing, 'play')
   }
 }
 
 function button (scene, text, x, y, sceneName) {
-  const outline = scene.add.rectangle(x, y, 300, 48, 0xFFFFFF)
-  const textSprite = scene.add.bitmapText(x, y, 'font', text, 32)
+  const outline = scene.add.image(x, y, 'button')
+  const textSprite = scene.add.bitmapText(x, y - 4, 'font', text, 32)
   textSprite.setOrigin(0.5)
+  outline.scale = 4
   outline.setInteractive()
   if (sceneName !== null) {
     outline.addListener('pointerdown', () => {

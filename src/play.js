@@ -38,6 +38,7 @@ export class PlayScene extends Phaser.Scene {
     this.hud = null
     this.turns = 0
     this.events = null
+    this.explosions = 0
   }
 
   create () {
@@ -66,6 +67,7 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.scrollX -= TILE_WIDTH / 2 * this.map.getWidth()
     this.cameras.main.scrollY -= TILE_HEIGHT / 2 * (this.map.getHeight())
     this.turns = 0
+    this.explosions = 0
     this.events = new Map()
 
     for (let x = 0; x < this.map.getWidth(); x++) {
@@ -85,9 +87,9 @@ export class PlayScene extends Phaser.Scene {
 
     this.keyboard.update()
 
-    if (this.player.health.isDepleted()) {
-      this.game.scene.stop(this)
-      this.game.scene.start('lose')
+    if (this.player.health.isDepleted() && this.explosions === 0) {
+      this.game.scene.pause(this)
+      this.game.scene.start('lose', { score: this.player.food.level })
     }
   }
 
@@ -115,9 +117,9 @@ export class PlayScene extends Phaser.Scene {
         explosion.play('explosion')
         explosion.on(
           Phaser.Animations.Events.ANIMATION_COMPLETE,
-          explosion.destroy,
-          explosion
+          () => this.explosionDone(explosion)
         )
+        this.explosions++
       }
     }
 
@@ -220,6 +222,11 @@ export class PlayScene extends Phaser.Scene {
     }
     return triggered
   }
+
+  explosionDone (explosion) {
+    explosion.destroy()
+    this.explosions--
+  }
 }
 
 class GameMap {
@@ -253,7 +260,7 @@ class GameMap {
       steam.play('steam')
       setCamera(this.scene.cameras.main, steam)
       this.steam.set(`${x},${y}`, steam)
-    } else if(this.steam.has(`${x},${y}`)) {
+    } else if (this.steam.has(`${x},${y}`)) {
       this.steam.get(`${x},${y}`).destroy()
     }
     this.layer.putTileAt(index, x, y)
@@ -329,6 +336,12 @@ class Player {
   }
 
   update (delta) {
+    this.moved = false
+
+    if (this.health.isDepleted()) {
+      return
+    }
+
     let deltaX = 0
     let deltaY = 0
     if (this.keyboard.isJustPressed(MOVE_LEFT)) {
@@ -340,8 +353,6 @@ class Player {
     } else if (this.keyboard.isJustPressed(MOVE_DOWN)) {
       deltaY = 1
     }
-
-    this.moved = false
 
     if (deltaX !== 0 || deltaY !== 0) {
       const newX = this.x + deltaX
